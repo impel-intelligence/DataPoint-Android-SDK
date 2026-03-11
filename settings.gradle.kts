@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "DataPointSDK"
 include(":app")
+include(":datapoint-sdk")
