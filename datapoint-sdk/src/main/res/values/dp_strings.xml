@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="datapoint_no_internet">No internet connection.\nWaiting for connection…</string>
+</resources>
