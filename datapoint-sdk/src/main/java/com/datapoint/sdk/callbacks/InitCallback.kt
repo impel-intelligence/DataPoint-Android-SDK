@@ -1,7 +1,7 @@
 package com.datapoint.sdk.callbacks
 
 /**
- * Optional callback for [DataPointSDK.initialize].
+ * Optional callback for [DataPoint.initialize].
  * Notifies the host app whether initialization succeeded or failed.
  */
 interface InitCallback {

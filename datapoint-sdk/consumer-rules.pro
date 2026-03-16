@@ -1,7 +1,7 @@
 # ── DataPoint SDK consumer ProGuard / R8 rules ──────────────────────────────
 
 # Keep all public SDK API classes
--keep class com.datapoint.sdk.DataPointSDK { *; }
+-keep class com.datapoint.sdk.DataPoint { *; }
 -keep interface com.datapoint.sdk.DataPointListener { *; }
 -keep interface com.datapoint.sdk.InitCallback { *; }
 -keep class com.datapoint.sdk.Reward { *; }

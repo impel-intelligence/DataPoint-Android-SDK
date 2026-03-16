@@ -3,7 +3,7 @@ package com.datapoint.sdk.callbacks
 /**
  * Callback interface for task-related events.
  *
- * Set via [DataPointSDK.setListener].
+ * Set via [DataPoint.setListener].
  */
 interface DataPointListener {
 
@@ -24,7 +24,7 @@ interface DataPointListener {
 
     /**
      * The task screen was closed — either by the user (back press),
-     * by the WebView, or programmatically via [DataPointSDK.closeTasks].
+     * by the WebView, or programmatically via [DataPoint.closeTasks].
      */
     fun onClosed()
 

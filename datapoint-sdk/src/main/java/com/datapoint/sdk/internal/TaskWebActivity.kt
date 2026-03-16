@@ -26,14 +26,14 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
-import com.datapoint.sdk.DataPointSDK
+import com.datapoint.sdk.DataPoint
 import com.datapoint.sdk.R
 import java.lang.ref.WeakReference
 
 /**
  * Full-screen activity that hosts the task WebView.
  *
- * Launched internally by [DataPointSDK.showTasks]; never instantiated by consumers.
+ * Launched internally by [DataPoint.showTasks]; never instantiated by consumers.
  * Handles:
  * - WebView setup with JS bridges & cookies
  * - Network loss / restoration with auto-reload
@@ -69,7 +69,7 @@ class TaskWebActivity : Activity() {
         pendingUrl = url
 
         // Register with the SDK so closeTasks() can reach us
-        DataPointSDK.onActivityCreated(WeakReference(this))
+        DataPoint.onActivityCreated(WeakReference(this))
 
         buildLayout()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -104,7 +104,7 @@ class TaskWebActivity : Activity() {
         webView.destroy()
 
         // Tell the SDK this activity is gone
-        DataPointSDK.onActivityDestroyed()
+        DataPoint.onActivityDestroyed()
 
         super.onDestroy()
     }
@@ -234,7 +234,7 @@ class TaskWebActivity : Activity() {
                 userId = userId,
                 sdkVersion = SdkConstants.SDK_VERSION,
                 platform = SdkConstants.PLATFORM,
-                environment = DataPointSDK.currentEnvironment.name
+                environment = DataPoint.currentEnvironment.name
             ),
             SdkConstants.JS_BRIDGE_APP
         )
@@ -344,24 +344,24 @@ class TaskWebActivity : Activity() {
 
     private fun onTaskCompleted(payload: String?) {
         DataPointLogger.d("Task completed, payload=$payload")
-        DataPointSDK.notifyTaskCompleted(payload)
+        DataPoint.notifyTaskCompleted(payload)
     }
 
     private fun onWatchAd() {
         DataPointLogger.d("Watch-ad requested")
-        DataPointSDK.notifyAdRequested()
+        DataPoint.notifyAdRequested()
         finishIfNotAlready()
     }
 
     private fun onWindowClose() {
         DataPointLogger.d("Window close from JS")
-        DataPointSDK.notifyClosed()
+        DataPoint.notifyClosed()
         finishIfNotAlready()
     }
 
     private fun onSessionExpired() {
         DataPointLogger.d("Session expired from JS – re-initializing")
-        DataPointSDK.handleSessionExpired(this)
+        DataPoint.handleSessionExpired(this)
     }
 
     // ── Back press ──────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ class TaskWebActivity : Activity() {
             webView.goBack()
         } else {
             DataPointLogger.d("Back press – closing task screen")
-            DataPointSDK.notifyClosed()
+            DataPoint.notifyClosed()
             super.onBackPressed()
         }
     }

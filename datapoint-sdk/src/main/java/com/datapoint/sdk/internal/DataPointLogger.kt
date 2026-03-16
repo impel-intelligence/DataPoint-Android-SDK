@@ -4,11 +4,11 @@ import android.util.Log
 
 /**
  * Internal SDK logger. Disabled by default; enable via
- * [com.datapoint.sdk.DataPointSDK.isLoggingEnabled].
+ * [com.datapoint.sdk.DataPoint.isLoggingEnabled].
  */
 internal object DataPointLogger {
 
-    private const val TAG = "DataPointSDK"
+    private const val TAG = "DataPoint"
 
     @Volatile
     var isEnabled: Boolean = false

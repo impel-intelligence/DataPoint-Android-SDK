@@ -27,10 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.datapoint.sdk.callbacks.DataPointListener
-import com.datapoint.sdk.DataPointSDK
+import com.datapoint.sdk.DataPoint
 import com.datapoint.sdk.models.Environment
 import com.datapoint.sdk.callbacks.InitCallback
-import com.datapoint.ui.theme.DataPointSDKTheme
+import com.datapoint.ui.theme.DataPointTheme
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -42,10 +42,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         // Enable SDK debug logging
-        DataPointSDK.isLoggingEnabled = true
+        DataPoint.isLoggingEnabled = true
 
         // Set listener
-        DataPointSDK.setListener(object : DataPointListener {
+        DataPoint.setListener(object : DataPointListener {
             override fun onTaskCompleted(payload: String?) {
                 log("onTaskCompleted → payload=$payload")
                 status = "Task completed: $payload"
@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
         })
 
         setContent {
-            DataPointSDKTheme {
+            DataPointTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DemoScreen(
                         status = status,
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
 
     private fun initSdk() {
         status = "Initializing…"
-        DataPointSDK.initialize(
+        DataPoint.initialize(
             context = applicationContext,
             appId = "dp_sdk_2bb9b01fb2f9453a8c6ae32e1d8323e9",
             userId = UUID.randomUUID().toString(),
@@ -104,11 +104,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showTasks() {
-        DataPointSDK.showTasks(this)
+        DataPoint.showTasks(this)
     }
 
     private fun closeTasks() {
-        DataPointSDK.closeTasks()
+        DataPoint.closeTasks()
     }
 
     private fun log(msg: String) {

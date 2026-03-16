@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DataPointSDK"
+rootProject.name = "DataPoint"
 include(":app")
 include(":datapoint-sdk")

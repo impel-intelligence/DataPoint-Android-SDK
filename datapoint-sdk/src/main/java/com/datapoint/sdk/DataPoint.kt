@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * ```kotlin
  * // 1. Initialize (once, in Application.onCreate or Activity)
- * DataPointSDK.initialize(
+ * DataPoint.initialize(
  *     context     = applicationContext,
  *     appId       = "YOUR_APP_ID",
  *     userId      = "user_123",           // optional
@@ -39,16 +39,16 @@ import java.util.concurrent.atomic.AtomicReference
  * )
  *
  * // 2. Set listener
- * DataPointSDK.setListener(object : DataPointListener { … })
+ * DataPoint.setListener(object : DataPointListener { … })
  *
  * // 3. Show task wall
- * DataPointSDK.showTasks(context)
+ * DataPoint.showTasks(context)
  *
  * // 4. Programmatically close (optional)
- * DataPointSDK.closeTasks()
+ * DataPoint.closeTasks()
  * ```
  */
-object DataPointSDK {
+object DataPoint {
 
     // ── State machine ───────────────────────────────────────────────────
 
