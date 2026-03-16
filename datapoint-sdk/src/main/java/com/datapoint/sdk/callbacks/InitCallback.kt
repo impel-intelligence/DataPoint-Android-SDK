@@ -1,4 +1,4 @@
-package com.datapoint.sdk
+package com.datapoint.sdk.callbacks
 
 /**
  * Optional callback for [DataPointSDK.initialize].

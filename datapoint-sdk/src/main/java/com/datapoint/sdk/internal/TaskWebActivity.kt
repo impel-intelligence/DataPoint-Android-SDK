@@ -1,6 +1,8 @@
 package com.datapoint.sdk.internal
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.AlertDialog
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -20,9 +22,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
-import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -42,7 +41,7 @@ import java.lang.ref.WeakReference
  * - Session-expiry re-initialization flow
  * - Proper cleanup in [onDestroy]
  */
-class TaskWebActivity : AppCompatActivity() {
+class TaskWebActivity : Activity() {
 
     private lateinit var webView: WebView
     private lateinit var errorContainer: FrameLayout
@@ -75,7 +74,6 @@ class TaskWebActivity : AppCompatActivity() {
         buildLayout()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        setupBackPress()
         setupWebView(url)
         setupNetworkCallback()
         loadUrl(url)
@@ -368,19 +366,17 @@ class TaskWebActivity : AppCompatActivity() {
 
     // ── Back press ──────────────────────────────────────────────────────
 
-    private fun setupBackPress() {
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    DataPointLogger.d("WebView going back")
-                    webView.goBack()
-                } else {
-                    DataPointLogger.d("Back press – closing task screen")
-                    DataPointSDK.notifyClosed()
-                    finish()
-                }
-            }
-        })
+    @Suppress("DEPRECATION")
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (webView.canGoBack()) {
+            DataPointLogger.d("WebView going back")
+            webView.goBack()
+        } else {
+            DataPointLogger.d("Back press – closing task screen")
+            DataPointSDK.notifyClosed()
+            super.onBackPressed()
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

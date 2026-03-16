@@ -1,4 +1,4 @@
-package com.datapoint.sdk
+package com.datapoint.sdk.callbacks
 
 /**
  * Callback interface for task-related events.

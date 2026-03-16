@@ -26,10 +26,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.datapoint.sdk.DataPointListener
+import com.datapoint.sdk.callbacks.DataPointListener
 import com.datapoint.sdk.DataPointSDK
-import com.datapoint.sdk.Environment
-import com.datapoint.sdk.InitCallback
+import com.datapoint.sdk.models.Environment
+import com.datapoint.sdk.callbacks.InitCallback
 import com.datapoint.ui.theme.DataPointSDKTheme
 import java.util.UUID
 

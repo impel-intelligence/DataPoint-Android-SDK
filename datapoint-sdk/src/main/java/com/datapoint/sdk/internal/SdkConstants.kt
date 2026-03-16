@@ -14,7 +14,7 @@ internal object SdkConstants {
 
     // ── Task WebView URLs ───────────────────────────────────────────────
     const val PRODUCTION_TASK_URL = "https://shayne-exorcistic-porsha.ngrok-free.dev/"
-    const val SANDBOX_TASK_URL = "https://sandbox-tasks.trydatapoint.com"
+    const val SANDBOX_TASK_URL = PRODUCTION_TASK_URL
 
     // ── JavaScript bridge names ─────────────────────────────────────────
     const val JS_BRIDGE_TASK = "DataPointTask"

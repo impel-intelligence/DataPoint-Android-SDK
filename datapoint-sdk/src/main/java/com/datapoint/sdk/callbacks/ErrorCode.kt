@@ -1,4 +1,4 @@
-package com.datapoint.sdk
+package com.datapoint.sdk.callbacks
 
 /**
  * Error codes returned by SDK callbacks.

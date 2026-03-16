@@ -1,4 +1,4 @@
-package com.datapoint.sdk
+package com.datapoint.sdk.models
 
 import androidx.annotation.Keep
 import org.json.JSONObject
