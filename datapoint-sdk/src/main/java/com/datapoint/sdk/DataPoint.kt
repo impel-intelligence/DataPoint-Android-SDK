@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import com.datapoint.sdk.DataPoint.initialize
 import com.datapoint.sdk.DataPoint.showTasks
+import com.datapoint.sdk.callbacks.DataPointCallback
 import com.datapoint.sdk.callbacks.DataPointListener
 import com.datapoint.sdk.callbacks.ErrorCode
 import com.datapoint.sdk.callbacks.InitCallback
@@ -293,6 +294,58 @@ object DataPoint {
         postOnMain { activity.finish() }
     }
 
+    // ── User Attributes ─────────────────────────────────────────────────
+
+    /**
+     * Set the user's age.
+     *
+     * @param age      User's age in years.
+     * @param callback Optional callback for the result.
+     */
+    fun setAge(age: Int, callback: DataPointCallback? = null) {
+        setAttributesInternal(mapOf("age" to age), callback)
+    }
+
+    /**
+     * Set the user's age range (e.g. "18-24", "25-34").
+     *
+     * @param ageRange Age range string.
+     * @param callback Optional callback for the result.
+     */
+    fun setAgeRange(ageRange: String, callback: DataPointCallback? = null) {
+        setAttributesInternal(mapOf("age_range" to ageRange), callback)
+    }
+
+    /**
+     * Set the user's occupation.
+     *
+     * @param occupation Occupation string.
+     * @param callback   Optional callback for the result.
+     */
+    fun setOccupation(occupation: String, callback: DataPointCallback? = null) {
+        setAttributesInternal(mapOf("occupation" to occupation), callback)
+    }
+
+    /**
+     * Set the user's gender.
+     *
+     * @param gender   Gender string.
+     * @param callback Optional callback for the result.
+     */
+    fun setGender(gender: String, callback: DataPointCallback? = null) {
+        setAttributesInternal(mapOf("gender" to gender), callback)
+    }
+
+    /**
+     * Set arbitrary user attributes as key-value pairs.
+     *
+     * @param attributes Map of attribute names to values.
+     * @param callback   Optional callback for the result.
+     */
+    fun setUserAttributes(attributes: Map<String, String>, callback: DataPointCallback? = null) {
+        setAttributesInternal(attributes.toMap(), callback)
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // INTERNAL (called by TaskWebActivity)
     // ════════════════════════════════════════════════════════════════════
@@ -370,6 +423,58 @@ object DataPoint {
     // ════════════════════════════════════════════════════════════════════
     // PRIVATE
     // ════════════════════════════════════════════════════════════════════
+
+    private fun setAttributesInternal(attributes: Map<String, Any>, callback: DataPointCallback?) {
+        if (state.get() != State.INITIALIZED) {
+            DataPointLogger.e("setAttributes() – SDK not initialized")
+            postOnMain {
+                callback?.onError(
+                    "SDK not initialized. Call initialize() first.",
+                    ErrorCode.SDK_NOT_INITIALIZED
+                )
+            }
+            return
+        }
+
+        val prefs = preferences ?: run {
+            postOnMain {
+                callback?.onError("SDK not initialized", ErrorCode.SDK_NOT_INITIALIZED)
+            }
+            return
+        }
+
+
+        val token = prefs.sessionToken
+        if (token.isNullOrBlank()) {
+            postOnMain {
+                callback?.onError("No valid session token", ErrorCode.SESSION_EXPIRED)
+            }
+            return
+        }
+
+        executor.execute {
+            val result = DataPointApi.setAttributes(
+                baseUrl = SdkConstants.PRODUCTION_BASE_URL,
+                sessionToken = token,
+                attributes = attributes
+            )
+
+            when (result) {
+                is DataPointApi.ApiResult.Success -> {
+                    DataPointLogger.d("Attributes set successfully")
+                    postOnMain { callback?.onSuccess() }
+                }
+
+                is DataPointApi.ApiResult.Error -> {
+                    val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
+                    DataPointLogger.e(
+                        "Set attributes failed (HTTP ${result.httpCode}): ${result.message}"
+                    )
+                    postOnMain { callback?.onError(result.message, errorCode) }
+                }
+            }
+        }
+    }
 
     private fun handleSandboxInit(prefs: DataPointPreferences, callback: InitCallback?) {
         DataPointLogger.d("Sandbox mode – using mock session")

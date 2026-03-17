@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.datapoint.sdk.callbacks.DataPointCallback
 import com.datapoint.sdk.callbacks.DataPointListener
 import com.datapoint.sdk.DataPoint
 import com.datapoint.sdk.models.Environment
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
                     DemoScreen(
                         status = status,
                         onInitialize = ::initSdk,
+                        onSetAttributes = ::setAttributes,
                         onShowTasks = ::showTasks,
                         onCloseTasks = ::closeTasks,
                         modifier = Modifier.padding(innerPadding)
@@ -111,6 +113,30 @@ class MainActivity : ComponentActivity() {
         DataPoint.closeTasks()
     }
 
+    private fun setAttributes() {
+        status = "Setting attributes…"
+
+        DataPoint.setAge(25)
+        DataPoint.setAgeRange("18-24")
+        DataPoint.setOccupation("Engineer")
+        DataPoint.setGender("male")
+
+        DataPoint.setUserAttributes(
+            mapOf("preferred_language" to "en", "theme" to "dark"),
+            object : DataPointCallback {
+                override fun onSuccess() {
+                    log("All attributes set successfully")
+                    status = "Attributes set ✓"
+                }
+
+                override fun onError(message: String, code: Int) {
+                    log("Set attributes failed: $message ($code)")
+                    status = "Set attributes failed ($code): $message"
+                }
+            }
+        )
+    }
+
     private fun log(msg: String) {
         Log.d("DemoApp", msg)
     }
@@ -120,6 +146,7 @@ class MainActivity : ComponentActivity() {
 private fun DemoScreen(
     status: String,
     onInitialize: () -> Unit,
+    onSetAttributes: () -> Unit,
     onShowTasks: () -> Unit,
     onCloseTasks: () -> Unit,
     modifier: Modifier = Modifier
@@ -152,6 +179,15 @@ private fun DemoScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Initialize SDK")
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = onSetAttributes,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Set User Attributes")
         }
 
         Spacer(Modifier.height(12.dp))

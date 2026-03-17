@@ -134,6 +134,74 @@ internal object DataPointApi {
         }
     }
 
+    // ── Set User Attributes ────────────────────────────────────────────
+
+    /**
+     * PUT /user/attributes
+     *
+     * Sends user attributes to the backend.
+     *
+     * **Must be called on a background thread.**
+     */
+    fun setAttributes(
+        baseUrl: String,
+        sessionToken: String,
+        attributes: Map<String, Any>
+    ): ApiResult<Unit> {
+        var connection: HttpURLConnection? = null
+        return try {
+            val url = URL("$baseUrl${SdkConstants.USER_ATTRIBUTES_ENDPOINT}")
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "PUT"
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Authorization", "Bearer $sessionToken")
+                connectTimeout = 30_000
+                readTimeout = 30_000
+                doOutput = true
+            }
+
+            val body = JSONObject().apply {
+                val attrsObj = JSONObject()
+                for ((key, value) in attributes) {
+                    attrsObj.put(key, value)
+                }
+                put("attributes", attrsObj)
+            }
+
+            DataPointLogger.d("PUT $url  body=$body")
+
+            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(body.toString())
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            val stream = if (responseCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream ?: connection.inputStream
+            }
+
+            val responseBody =
+                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+
+            DataPointLogger.d("Response ($responseCode): $responseBody")
+
+            if (responseCode !in 200..299) {
+                val msg = parseErrorMessage(responseBody, responseCode)
+                return ApiResult.Error(msg, responseCode)
+            }
+
+            ApiResult.Success(Unit)
+        } catch (e: Exception) {
+            DataPointLogger.e("Set attributes request failed", e)
+            ApiResult.Error(e.message ?: "Network error", 0)
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private fun parseErrorMessage(body: String?, httpCode: Int): String {
