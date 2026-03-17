@@ -4,7 +4,6 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -136,7 +135,6 @@ internal object DeviceInfoCollector {
         return JSONObject().apply {
             put("screen_resolution", "${widthPx}x${heightPx}")
             put("screen_density", densityDpi)
-            put("screen_size_inches", String.format("%.1f", screenSizeInches).toDouble())
             put("orientation", orientation)
         }
     }
