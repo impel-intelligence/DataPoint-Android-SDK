@@ -37,6 +37,9 @@ internal object DataPointApi {
      *
      * **Must be called on a background thread.**
      */
+    private const val MAX_INIT_ATTEMPTS = 3
+    private const val RETRY_BASE_DELAY_MS = 1000L
+
     fun validate(
         baseUrl: String,
         apiKey: String,
@@ -54,84 +57,115 @@ internal object DataPointApi {
         identifiersInfo: JSONObject,
         privacyInfo: JSONObject
     ): ApiResult<InitResponse> {
-        var connection: HttpURLConnection? = null
-        return try {
-            val url = URL("$baseUrl${SdkConstants.VALIDATE_ENDPOINT}")
-            connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("Accept", "application/json")
-                connectTimeout = 30_000
-                readTimeout = 30_000
-                doOutput = true
-            }
 
-            val body = JSONObject().apply {
-                put("api_key", apiKey)
-                if (!userId.isNullOrBlank()) put("user_id", userId)
-                put("device_id", deviceId)
-                put("timestamp", timestamp)
-                put("environment", environment)
+        val body = JSONObject().apply {
+            put("api_key", apiKey)
+            if (!userId.isNullOrBlank()) put("user_id", userId)
+            put("device_id", deviceId)
+            put("timestamp", timestamp)
+            put("environment", environment)
 
-                put("sdk", sdkInfo)
-                put("app", appInfo)
-                put("device", deviceInfo)
-                put("display", displayInfo)
-                put("network", networkInfo)
-                put("locale", localeInfo)
-                put("battery", batteryInfo)
-                put("identifiers", identifiersInfo)
-                put("privacy", privacyInfo)
-            }
-
-            DataPointLogger.d("POST $url  body=$body")
-
-            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
-                writer.write(body.toString())
-                writer.flush()
-            }
-
-            val responseCode = connection.responseCode
-            val stream = if (responseCode in 200..299) {
-                connection.inputStream
-            } else {
-                connection.errorStream ?: connection.inputStream
-            }
-
-            val responseBody =
-                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
-
-            DataPointLogger.d("Response ($responseCode): $responseBody")
-
-            if (responseCode !in 200..299) {
-                val msg = parseErrorMessage(responseBody, responseCode)
-                return ApiResult.Error(msg, responseCode)
-            }
-
-            val json = JSONObject(responseBody)
-            if (json.optString("status") != "success") {
-                return ApiResult.Error(
-                    json.optString("message", "Initialization failed"),
-                    responseCode
-                )
-            }
-
-            val data = json.optJSONObject("data")
-                ?: return ApiResult.Error("Invalid response: missing 'data'", responseCode)
-
-            ApiResult.Success(
-                InitResponse(
-                    userId = data.optString("user_id", ""),
-                    sessionToken = data.optString("session_token", ""),
-                    expiresIn = data.optLong("expires_in", 86400)
-                )
-            )
-        } catch (e: Exception) {
-            DataPointLogger.e("Validate request failed", e)
-            ApiResult.Error(e.message ?: "Network error", 0)
-        } finally {
-            connection?.disconnect()
+            put("sdk", sdkInfo)
+            put("app", appInfo)
+            put("device", deviceInfo)
+            put("display", displayInfo)
+            put("network", networkInfo)
+            put("locale", localeInfo)
+            put("battery", batteryInfo)
+            put("identifiers", identifiersInfo)
+            put("privacy", privacyInfo)
         }
+
+        var lastResult: ApiResult<InitResponse> = ApiResult.Error("Initialization failed", 0)
+
+        for (attempt in 1..MAX_INIT_ATTEMPTS) {
+            var connection: HttpURLConnection? = null
+            try {
+                val url = URL("$baseUrl${SdkConstants.VALIDATE_ENDPOINT}")
+                connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    setRequestProperty("Accept", "application/json")
+                    connectTimeout = 30_000
+                    readTimeout = 30_000
+                    doOutput = true
+                }
+
+                DataPointLogger.d("POST $url  body=$body (attempt $attempt/$MAX_INIT_ATTEMPTS)")
+
+                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                    writer.write(body.toString())
+                    writer.flush()
+                }
+
+                val responseCode = connection.responseCode
+                val stream = if (responseCode in 200..299) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream ?: connection.inputStream
+                }
+
+                val responseBody =
+                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+
+                DataPointLogger.d("Response ($responseCode): $responseBody")
+
+                // 5xx → retry
+                if (responseCode in 500..599) {
+                    val msg = parseErrorMessage(responseBody, responseCode)
+                    lastResult = ApiResult.Error(msg, responseCode)
+                    if (attempt < MAX_INIT_ATTEMPTS) {
+                        val delay = attempt * RETRY_BASE_DELAY_MS
+                        DataPointLogger.w(
+                            "Server error ($responseCode), retrying in ${delay}ms " +
+                                    "(attempt $attempt/$MAX_INIT_ATTEMPTS)"
+                        )
+                        Thread.sleep(delay)
+                        continue
+                    }
+                    return lastResult
+                }
+
+                // Other non-2xx (4xx etc.) → fail immediately
+                if (responseCode !in 200..299) {
+                    val msg = parseErrorMessage(responseBody, responseCode)
+                    return ApiResult.Error(msg, responseCode)
+                }
+
+                // 2xx → parse response
+                val json = JSONObject(responseBody)
+                if (json.optString("status") != "success") {
+                    return ApiResult.Error(
+                        json.optString("message", "Initialization failed"),
+                        responseCode
+                    )
+                }
+
+                val data = json.optJSONObject("data")
+                    ?: return ApiResult.Error("Invalid response: missing 'data'", responseCode)
+
+                return ApiResult.Success(
+                    InitResponse(
+                        userId = data.optString("user_id", ""),
+                        sessionToken = data.optString("session_token", ""),
+                        expiresIn = data.optLong("expires_in", 86400)
+                    )
+                )
+            } catch (e: Exception) {
+                DataPointLogger.e("Validate request failed (attempt $attempt/$MAX_INIT_ATTEMPTS)", e)
+                lastResult = ApiResult.Error(e.message ?: "Network error", 0)
+                if (attempt < MAX_INIT_ATTEMPTS) {
+                    val delay = attempt * RETRY_BASE_DELAY_MS
+                    DataPointLogger.w("Retrying in ${delay}ms…")
+                    Thread.sleep(delay)
+                    continue
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }
+
+        return lastResult
     }
 
     // ── Set User Attributes ────────────────────────────────────────────

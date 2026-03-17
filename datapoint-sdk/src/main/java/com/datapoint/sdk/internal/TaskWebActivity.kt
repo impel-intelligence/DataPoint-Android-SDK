@@ -7,6 +7,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -52,6 +53,7 @@ class TaskWebActivity : Activity() {
     private var pendingUrl: String? = null
     private var hasReloadedOnConnectionRestore = false
     private var audioVolumeHelper: WebViewAudioVolumeHelper? = null
+    private var webAppInterface: WebAppInterface? = null
 
     // ── Lifecycle ───────────────────────────────────────────────────────
 
@@ -228,16 +230,18 @@ class TaskWebActivity : Activity() {
         val sessionToken = intent.getStringExtra(SdkConstants.EXTRA_SESSION_TOKEN)
         val userId = intent.getStringExtra(SdkConstants.EXTRA_USER_ID)
 
-        webView.addJavascriptInterface(
-            WebAppInterface(
-                sessionToken = sessionToken,
-                userId = userId,
-                sdkVersion = SdkConstants.SDK_VERSION,
-                platform = SdkConstants.PLATFORM,
-                environment = DataPoint.currentEnvironment.name
-            ),
-            SdkConstants.JS_BRIDGE_APP
+        val appInterface = WebAppInterface(
+            sessionToken = sessionToken,
+            userId = userId,
+            sdkVersion = SdkConstants.SDK_VERSION,
+            platform = SdkConstants.PLATFORM,
+            environment = DataPoint.currentEnvironment.name,
+            apiKey = DataPoint.currentApiKey,
+            appId = packageName
         )
+        webAppInterface = appInterface
+
+        webView.addJavascriptInterface(appInterface, SdkConstants.JS_BRIDGE_APP)
 
         // Audio volume helper
         audioVolumeHelper = WebViewAudioVolumeHelper.attach(webView)
@@ -310,8 +314,9 @@ class TaskWebActivity : Activity() {
         val cm = connectivityManager ?: return false
         val net = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(net) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     // ── Error UI ────────────────────────────────────────────────────────
@@ -360,8 +365,19 @@ class TaskWebActivity : Activity() {
     }
 
     private fun onSessionExpired() {
-        DataPointLogger.d("Session expired from JS – re-initializing")
-        DataPoint.handleSessionExpired(this)
+        DataPointLogger.d("Session expired from JS – re-initializing in background")
+        DataPoint.handleSessionExpired(this) { newToken ->
+            runOnUiThread {
+                webAppInterface?.updateToken(newToken)
+
+                pendingUrl?.let { url ->
+                    CookieManager.getInstance().setCookie(url, "session_token=$newToken")
+                }
+
+                DataPointLogger.d("Delivering new token to WebView via onNewTokenGenerate")
+                webView.evaluateJavascript("onNewTokenGenerate('$newToken')", null)
+            }
+        }
     }
 
     // ── Back press ──────────────────────────────────────────────────────

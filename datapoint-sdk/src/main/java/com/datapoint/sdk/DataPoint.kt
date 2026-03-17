@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicReference
  * // 1. Initialize (once, in Application.onCreate or Activity)
  * DataPoint.initialize(
  *     context     = applicationContext,
- *     appId       = "YOUR_APP_ID",
+ *     apiKey      = "YOUR_API_KEY",
  *     userId      = "user_123",           // optional
  *     environment = Environment.PRODUCTION,
  *     callback    = object : InitCallback { … }
@@ -67,7 +67,7 @@ object DataPoint {
     private var preferences: DataPointPreferences? = null
     @Volatile
     internal var environment: Environment = Environment.PRODUCTION
-    private var appId: String? = null
+    private var apiKey: String? = null
     private var userId: String? = null
 
     // ── Listener & activity reference ───────────────────────────────────
@@ -108,24 +108,24 @@ object DataPoint {
      * it skips the network call and uses mock data.
      *
      * @param context     Application or Activity context.
-     * @param appId       API key provided by DataPoint.
+     * @param apiKey      API key provided by DataPoint.
      * @param userId      Optional user identifier from the host app.
      * @param environment [Environment.PRODUCTION] or [Environment.SANDBOX].
      * @param callback    Optional callback for init result.
      */
     fun initialize(
         context: Context,
-        appId: String,
+        apiKey: String,
         userId: String? = null,
         environment: Environment = Environment.PRODUCTION,
         callback: InitCallback? = null
     ) {
-        DataPointLogger.d("initialize() appId=$appId env=$environment userId=$userId")
+        DataPointLogger.d("initialize() apiKey=$apiKey env=$environment userId=$userId")
 
         // ── Validate input ──────────────────────────────────────────────
-        if (appId.isBlank()) {
-            DataPointLogger.e("initialize() failed: appId is blank")
-            postOnMain { callback?.onError("appId cannot be empty", ErrorCode.INVALID_CONFIGURATION) }
+        if (apiKey.isBlank()) {
+            DataPointLogger.e("initialize() failed: apiKey is blank")
+            postOnMain { callback?.onError("apiKey cannot be empty", ErrorCode.INVALID_CONFIGURATION) }
             return
         }
 
@@ -133,17 +133,11 @@ object DataPoint {
         val appCtx = context.applicationContext
         this.applicationContext = appCtx
         this.environment = environment
-        this.appId = appId
+        this.apiKey = apiKey
         this.userId = userId
 
         val prefs = DataPointPreferences(appCtx)
         this.preferences = prefs
-
-        // ── Sandbox: skip network ───────────────────────────────────────
-        if (environment == Environment.SANDBOX) {
-            handleSandboxInit(prefs, callback)
-            return
-        }
 
         // ── Prevent redundant concurrent calls ──────────────────────────
         if (!moveToInitializing()) {
@@ -152,7 +146,7 @@ object DataPoint {
         }
 
         // ── Reuse valid session ─────────────────────────────────────────
-        if (prefs.isSessionValid() && prefs.appId == appId) {
+        if (prefs.isSessionValid() && prefs.apiKey == apiKey) {
             DataPointLogger.d("Existing session is still valid – reusing")
             prefs.userId = userId ?: prefs.userId
             state.set(State.INITIALIZED)
@@ -196,7 +190,7 @@ object DataPoint {
 
             val result = DataPointApi.validate(
                 baseUrl = SdkConstants.PRODUCTION_BASE_URL,
-                apiKey = appId,
+                apiKey = apiKey,
                 userId = userId,
                 deviceId = deviceId,
                 timestamp = System.currentTimeMillis() / 1000,
@@ -218,7 +212,7 @@ object DataPoint {
                     prefs.sessionExpiry =
                         System.currentTimeMillis() + (result.data.expiresIn * 1000)
                     prefs.userId = result.data.userId
-                    prefs.appId = appId
+                    prefs.apiKey = apiKey
                     state.set(State.INITIALIZED)
                     DataPointLogger.d("Initialization successful")
                     postOnMain { callback?.onSuccess() }
@@ -353,6 +347,9 @@ object DataPoint {
     internal val currentEnvironment: Environment
         get() = environment
 
+    internal val currentApiKey: String?
+        get() = apiKey
+
     internal fun onActivityCreated(ref: WeakReference<Activity>) {
         activeActivityRef = ref
         isCallbackDispatched = false
@@ -389,25 +386,34 @@ object DataPoint {
 
     /**
      * Called by the WebView when a 401 SESSION_EXPIRED is received.
-     * Closes the current activity, re-initializes, and re-shows tasks.
+     * Re-initializes the SDK in the background **without closing** the
+     * WebView. On success the new token is delivered via [onNewToken]
+     * so the WebView can continue with fresh credentials.
      */
-    internal fun handleSessionExpired(activity: Activity) {
-        isCallbackDispatched = true // prevent duplicate onClosed()
-        activity.finish()
-        activeActivityRef = null
-
+    internal fun handleSessionExpired(
+        activity: Activity,
+        onNewToken: (String) -> Unit
+    ) {
         val ctx = applicationContext ?: return
-        val aid = appId ?: return
+        val key = apiKey ?: return
 
-        DataPointLogger.d("Session expired – starting re-initialization")
+        DataPointLogger.d("Session expired – re-initializing in background")
 
-        // Force fresh session
         preferences?.clearSession()
 
-        initialize(ctx, aid, userId, environment, object : InitCallback {
+        initialize(ctx, key, userId, environment, object : InitCallback {
             override fun onSuccess() {
-                DataPointLogger.d("Re-init successful – re-showing tasks")
-                launchTaskActivity(ctx)
+                val newToken = preferences?.sessionToken
+                if (newToken.isNullOrBlank()) {
+                    DataPointLogger.e("Re-init succeeded but no token available")
+                    listener?.onError(
+                        "Session expired and token refresh failed",
+                        ErrorCode.SESSION_EXPIRED
+                    )
+                    return
+                }
+                DataPointLogger.d("Re-init successful – delivering new token to WebView")
+                onNewToken(newToken)
             }
 
             override fun onError(message: String, code: Int) {
@@ -416,6 +422,7 @@ object DataPoint {
                     "Session expired and re-initialization failed: $message",
                     ErrorCode.SESSION_EXPIRED
                 )
+                postOnMain { activity.finish() }
             }
         })
     }
@@ -481,7 +488,7 @@ object DataPoint {
         prefs.sessionToken = "sandbox_token_${System.currentTimeMillis()}"
         prefs.sessionExpiry = System.currentTimeMillis() + 86_400_000L // 24 h
         prefs.userId = userId ?: "sandbox_user_${prefs.deviceId.take(8)}"
-        prefs.appId = appId
+        prefs.apiKey = apiKey
         state.set(State.INITIALIZED)
         postOnMain { callback?.onSuccess() }
     }
@@ -500,11 +507,11 @@ object DataPoint {
 
     private fun reinitializeAndShow(context: Context) {
         val ctx = applicationContext ?: context.applicationContext
-        val aid = appId ?: return
+        val key = apiKey ?: return
 
 //        preferences?.clearSession()
 
-        initialize(ctx, aid, userId, environment, object : InitCallback {
+        initialize(ctx, key, userId, environment, object : InitCallback {
             override fun onSuccess() {
                 launchTaskActivity(context)
             }

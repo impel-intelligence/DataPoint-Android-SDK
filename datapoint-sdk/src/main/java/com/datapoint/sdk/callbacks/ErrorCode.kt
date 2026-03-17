@@ -13,7 +13,7 @@ object ErrorCode {
     /** The session token expired and automatic re-initialization failed. */
     const val SESSION_EXPIRED = 1003
 
-    /** Invalid parameters passed to the SDK (e.g. blank appId). */
+    /** Invalid parameters passed to the SDK (e.g. blank apiKey). */
     const val INVALID_CONFIGURATION = 1004
 
     /** [com.datapoint.sdk.DataPoint.showTasks] was called while the task screen is already visible. */

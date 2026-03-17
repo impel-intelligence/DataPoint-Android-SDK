@@ -97,7 +97,7 @@ internal class DataPointPreferences(context: Context) {
             prefs.edit { putString(SdkConstants.PREF_USER_ID, value) }
         }
 
-    var appId: String?
+    var apiKey: String?
         get() = prefs.getString(SdkConstants.PREF_APP_ID, null)
         set(value) {
             prefs.edit { putString(SdkConstants.PREF_APP_ID, value) }

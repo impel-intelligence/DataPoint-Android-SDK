@@ -9,12 +9,18 @@ import android.webkit.JavascriptInterface
  * The WebView uses the token for `Authorization: Bearer` headers.
  */
 internal class WebAppInterface(
-    private val sessionToken: String?,
+    @Volatile private var sessionToken: String?,
     private val userId: String?,
     private val sdkVersion: String,
     private val platform: String,
-    private val environment: String
+    private val environment: String,
+    private val apiKey: String?,
+    private val appId: String?
 ) {
+
+    fun updateToken(token: String) {
+        sessionToken = token
+    }
 
     @JavascriptInterface
     fun getToken(): String? = sessionToken
@@ -30,4 +36,10 @@ internal class WebAppInterface(
 
     @JavascriptInterface
     fun getEnvironment(): String = environment
+
+    @JavascriptInterface
+    fun getApiKey(): String? = apiKey
+
+    @JavascriptInterface
+    fun getAppId(): String? = appId
 }
