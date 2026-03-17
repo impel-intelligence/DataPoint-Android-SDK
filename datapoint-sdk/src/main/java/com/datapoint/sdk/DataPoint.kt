@@ -398,7 +398,9 @@ object DataPoint {
             putExtra(SdkConstants.EXTRA_TASK_URL, baseTaskUrl)
             putExtra(SdkConstants.EXTRA_SESSION_TOKEN, prefs.sessionToken)
             putExtra(SdkConstants.EXTRA_USER_ID, prefs.userId)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (context !is Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
         }
 
         context.startActivity(intent)

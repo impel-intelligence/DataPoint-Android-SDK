@@ -8,7 +8,8 @@
     <application>
         <activity
             android:name="com.datapoint.sdk.internal.TaskWebActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="portrait"
+            android:launchMode="singleTask"
             android:exported="false"
             android:theme="@style/DataPoint.Theme" />
     </application>
