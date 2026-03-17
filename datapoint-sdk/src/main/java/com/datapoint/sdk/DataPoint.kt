@@ -15,6 +15,7 @@ import com.datapoint.sdk.callbacks.InitCallback
 import com.datapoint.sdk.internal.DataPointApi
 import com.datapoint.sdk.internal.DataPointLogger
 import com.datapoint.sdk.internal.DataPointPreferences
+import com.datapoint.sdk.internal.DeviceInfoCollector
 import com.datapoint.sdk.internal.SdkConstants
 import com.datapoint.sdk.internal.TaskWebActivity
 import com.datapoint.sdk.models.Environment
@@ -158,32 +159,55 @@ object DataPoint {
         }
 
         // ── Production: call backend ────────────────────────────────────
-//        val packageName = appCtx.packageName
-        val packageName = "com.tryimpel.dippy"
         val deviceId = prefs.deviceId
         val sha256 = getSigningCertSha256(appCtx)
+        val installId = prefs.installId
+        val androidId = prefs.rawAndroidId
 
         executor.execute {
             // ── Fetch Google Advertising ID (best-effort) ────────────
-            val advertisingId: String? = try {
+            var advertisingId: String? = null
+            var limitAdTracking = false
+            try {
                 val adInfo = AdvertisingIdClient.getAdvertisingIdInfo(appCtx)
-                if (adInfo.isLimitAdTrackingEnabled) null else adInfo.id
+                limitAdTracking = adInfo.isLimitAdTrackingEnabled
+                advertisingId = if (limitAdTracking) null else adInfo.id
             } catch (e: Exception) {
                 DataPointLogger.w("Could not retrieve Advertising ID: ${e.message}")
-                null
             }
             DataPointLogger.d("Advertising ID: ${advertisingId ?: "unavailable"}")
 
+            // ── Collect device context ───────────────────────────────
+            val sdkInfo = DeviceInfoCollector.collectSdkInfo()
+            val appInfo = DeviceInfoCollector.collectAppInfo(appCtx, sha256)
+            val deviceInfo = DeviceInfoCollector.collectDeviceInfo(appCtx)
+            val displayInfo = DeviceInfoCollector.collectDisplayInfo(appCtx)
+            val networkInfo = DeviceInfoCollector.collectNetworkInfo(appCtx)
+            val localeInfo = DeviceInfoCollector.collectLocaleInfo()
+            val batteryInfo = DeviceInfoCollector.collectBatteryInfo(appCtx)
+            val identifiersInfo = DeviceInfoCollector.collectIdentifiers(
+                advertisingId = advertisingId,
+                installId = installId,
+                androidId = androidId
+            )
+            val privacyInfo = DeviceInfoCollector.collectPrivacy(limitAdTracking)
+
             val result = DataPointApi.validate(
                 baseUrl = SdkConstants.PRODUCTION_BASE_URL,
-                appId = appId,
+                apiKey = appId,
                 userId = userId,
                 deviceId = deviceId,
-                packageName = packageName,
-                sdkVersion = SdkConstants.SDK_VERSION,
-                sha256Cert = sha256,
+                timestamp = System.currentTimeMillis() / 1000,
                 environment = environment.name,
-                advertisingId = advertisingId
+                sdkInfo = sdkInfo,
+                appInfo = appInfo,
+                deviceInfo = deviceInfo,
+                displayInfo = displayInfo,
+                networkInfo = networkInfo,
+                localeInfo = localeInfo,
+                batteryInfo = batteryInfo,
+                identifiersInfo = identifiersInfo,
+                privacyInfo = privacyInfo
             )
 
             when (result) {
@@ -200,9 +224,10 @@ object DataPoint {
 
                 is DataPointApi.ApiResult.Error -> {
                     state.set(State.FAILED)
-                    DataPointLogger.e("Initialization failed: ${result.message}")
+                    val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
+                    DataPointLogger.e("Initialization failed (HTTP ${result.httpCode}): ${result.message}")
                     postOnMain {
-                        callback?.onError(result.message, ErrorCode.INITIALIZATION_FAILED)
+                        callback?.onError(result.message, errorCode)
                     }
                 }
             }

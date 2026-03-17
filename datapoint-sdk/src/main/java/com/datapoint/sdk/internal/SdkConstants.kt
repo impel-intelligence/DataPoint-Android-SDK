@@ -33,7 +33,8 @@ internal object SdkConstants {
     const val PREF_SESSION_EXPIRY = "session_expiry"
     const val PREF_USER_ID = "user_id"
     const val PREF_APP_ID = "app_id"
+    const val PREF_INSTALL_ID = "install_id"
 
     // ── Trusted hosts for WebView navigation ────────────────────────────
-    val TRUSTED_HOSTS = listOf("trydatapoint.com", "trydatapoint.ai", "dippy.ai", "ngrok-free.dev")
+    val TRUSTED_HOSTS = listOf("trydatapoint.com", "trydatapoint.ai", "ngrok-free.dev")
 }

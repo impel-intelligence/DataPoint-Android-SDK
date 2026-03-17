@@ -32,18 +32,27 @@ internal object DataPointApi {
      * POST /initialize
      *
      * Registers / validates the app and returns a session token.
+     * Sends the full device context (sdk, app, device, display, network,
+     * locale, battery, identifiers, privacy) in a nested JSON body.
+     *
      * **Must be called on a background thread.**
      */
     fun validate(
         baseUrl: String,
-        appId: String,
+        apiKey: String,
         userId: String?,
         deviceId: String,
-        packageName: String,
-        sdkVersion: String,
-        sha256Cert: String?,
-        environment: String? = null,
-        advertisingId: String? = null
+        timestamp: Long,
+        environment: String,
+        sdkInfo: JSONObject,
+        appInfo: JSONObject,
+        deviceInfo: JSONObject,
+        displayInfo: JSONObject,
+        networkInfo: JSONObject,
+        localeInfo: JSONObject,
+        batteryInfo: JSONObject,
+        identifiersInfo: JSONObject,
+        privacyInfo: JSONObject
     ): ApiResult<InitResponse> {
         var connection: HttpURLConnection? = null
         return try {
@@ -58,16 +67,21 @@ internal object DataPointApi {
             }
 
             val body = JSONObject().apply {
-                put("api_key", appId)
-                put("device_id", deviceId)
-                put("platform", SdkConstants.PLATFORM)
-                put("package_name", packageName)
+                put("api_key", apiKey)
                 if (!userId.isNullOrBlank()) put("user_id", userId)
-                if (!sha256Cert.isNullOrBlank()) put("sha256_cert", sha256Cert)
-                put("sdk_version", sdkVersion)
-                put("timestamp", (System.currentTimeMillis() / 1000).toString())
-                if (!environment.isNullOrBlank()) put("environment", environment)
-                if (!advertisingId.isNullOrBlank()) put("advertising_id", advertisingId)
+                put("device_id", deviceId)
+                put("timestamp", timestamp)
+                put("environment", environment)
+
+                put("sdk", sdkInfo)
+                put("app", appInfo)
+                put("device", deviceInfo)
+                put("display", displayInfo)
+                put("network", networkInfo)
+                put("locale", localeInfo)
+                put("battery", batteryInfo)
+                put("identifiers", identifiersInfo)
+                put("privacy", privacyInfo)
             }
 
             DataPointLogger.d("POST $url  body=$body")
@@ -125,9 +139,26 @@ internal object DataPointApi {
     private fun parseErrorMessage(body: String?, httpCode: Int): String {
         if (body.isNullOrBlank()) return "Request failed ($httpCode)"
         return try {
-            JSONObject(body).optString("message", "Request failed ($httpCode)")
+            val json = JSONObject(body)
+            json.optString("detail", "").ifBlank {
+                json.optString("message", "").ifBlank {
+                    "Request failed ($httpCode)"
+                }
+            }
         } catch (_: Exception) {
             "Request failed ($httpCode)"
+        }
+    }
+
+    fun httpCodeToErrorCode(httpCode: Int): Int {
+        return when (httpCode) {
+            400 -> com.datapoint.sdk.callbacks.ErrorCode.INVALID_REQUEST
+            401 -> com.datapoint.sdk.callbacks.ErrorCode.INVALID_API_KEY
+            403 -> com.datapoint.sdk.callbacks.ErrorCode.APP_VALIDATION_FAILED
+            429 -> com.datapoint.sdk.callbacks.ErrorCode.RATE_LIMITED
+            in 500..599 -> com.datapoint.sdk.callbacks.ErrorCode.SERVER_ERROR
+            0 -> com.datapoint.sdk.callbacks.ErrorCode.NETWORK_ERROR
+            else -> com.datapoint.sdk.callbacks.ErrorCode.INITIALIZATION_FAILED
         }
     }
 }

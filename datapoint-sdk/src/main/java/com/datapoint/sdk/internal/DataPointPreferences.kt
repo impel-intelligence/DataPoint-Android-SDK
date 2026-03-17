@@ -1,5 +1,6 @@
 package com.datapoint.sdk.internal
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.provider.Settings
@@ -33,6 +34,7 @@ internal class DataPointPreferences(context: Context) {
         }
 
     /** [Settings.Secure.ANDROID_ID] resolved at construction time. */
+    @SuppressLint("HardwareIds")
     private val androidId: String? =
         try {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
@@ -70,6 +72,22 @@ internal class DataPointPreferences(context: Context) {
                 .remove(SdkConstants.PREF_SESSION_EXPIRY)
         }
     }
+
+    // ── Install ID (persists across sessions, unique per install) ──────
+
+    val installId: String
+        get() {
+            val existing = prefs.getString(SdkConstants.PREF_INSTALL_ID, null)
+            if (existing != null) return existing
+            val id = UUID.randomUUID().toString()
+            prefs.edit { putString(SdkConstants.PREF_INSTALL_ID, id) }
+            DataPointLogger.d("Generated install ID: $id")
+            return id
+        }
+
+    /** Exposes the raw ANDROID_ID for the identifiers payload. */
+    val rawAndroidId: String?
+        get() = androidId
 
     // ── User / App ──────────────────────────────────────────────────────
 
