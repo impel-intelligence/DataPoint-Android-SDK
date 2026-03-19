@@ -26,6 +26,8 @@ internal object SdkConstants {
     const val EXTRA_TASK_URL = "dp_extra_task_url"
     const val EXTRA_SESSION_TOKEN = "dp_extra_session_token"
     const val EXTRA_USER_ID = "dp_extra_user_id"
+    const val EXTRA_EXTERNAL_USER_ID = "dp_extra_external_user_id"
+    const val EXTRA_APP_ID = "dp_extra_app_id"
 
     // ── SharedPreferences ───────────────────────────────────────────────
     const val PREFS_NAME = "datapoint_sdk_prefs"
@@ -33,6 +35,8 @@ internal object SdkConstants {
     const val PREF_SESSION_TOKEN = "session_token"
     const val PREF_SESSION_EXPIRY = "session_expiry"
     const val PREF_USER_ID = "user_id"
+    const val PREF_EXTERNAL_USER_ID = "external_user_id"
+    const val PREF_API_KEY = "api_key"
     const val PREF_APP_ID = "app_id"
     const val PREF_INSTALL_ID = "install_id"
 

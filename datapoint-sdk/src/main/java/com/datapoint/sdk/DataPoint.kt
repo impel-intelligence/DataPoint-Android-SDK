@@ -27,6 +27,7 @@ import java.lang.ref.WeakReference
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.jvm.JvmStatic
 
 /**
  * Main entry point for the DataPoint SDK.
@@ -90,6 +91,8 @@ object DataPoint {
     // ── Public: logging ─────────────────────────────────────────────────
 
     /** Enable / disable SDK debug logging (default: `false`). */
+    @get:JvmStatic
+    @set:JvmStatic
     var isLoggingEnabled: Boolean
         get() = DataPointLogger.isEnabled
         set(value) {
@@ -113,6 +116,7 @@ object DataPoint {
      * @param environment [Environment.PRODUCTION] or [Environment.SANDBOX].
      * @param callback    Optional callback for init result.
      */
+    @JvmStatic
     fun initialize(
         context: Context,
         apiKey: String,
@@ -212,7 +216,9 @@ object DataPoint {
                     prefs.sessionExpiry =
                         System.currentTimeMillis() + (result.data.expiresIn * 1000)
                     prefs.userId = result.data.userId
+                    prefs.externalUserId = result.data.externalUserId.ifBlank { null }
                     prefs.apiKey = apiKey
+                    prefs.appId = result.data.appId.ifBlank { null }
                     state.set(State.INITIALIZED)
                     DataPointLogger.d("Initialization successful")
                     postOnMain { callback?.onSuccess() }
@@ -234,6 +240,7 @@ object DataPoint {
      * Register a listener for task events.
      * Pass `null` to remove.
      */
+    @JvmStatic
     fun setListener(listener: DataPointListener?) {
         this.listener = listener
     }
@@ -245,6 +252,7 @@ object DataPoint {
      *
      * @param context Activity or Application context.
      */
+    @JvmStatic
     fun showTasks(context: Context) {
         DataPointLogger.d("showTasks()")
 
@@ -281,6 +289,7 @@ object DataPoint {
     /**
      * Programmatically close the task screen if it is currently visible.
      */
+    @JvmStatic
     fun closeTasks() {
         DataPointLogger.d("closeTasks()")
         val activity = activeActivityRef?.get() ?: return
@@ -296,6 +305,7 @@ object DataPoint {
      * @param age      User's age in years.
      * @param callback Optional callback for the result.
      */
+    @JvmStatic
     fun setAge(age: Int, callback: DataPointCallback? = null) {
         setAttributesInternal(mapOf("age" to age), callback)
     }
@@ -306,6 +316,7 @@ object DataPoint {
      * @param ageRange Age range string.
      * @param callback Optional callback for the result.
      */
+    @JvmStatic
     fun setAgeRange(ageRange: String, callback: DataPointCallback? = null) {
         setAttributesInternal(mapOf("age_range" to ageRange), callback)
     }
@@ -316,6 +327,7 @@ object DataPoint {
      * @param occupation Occupation string.
      * @param callback   Optional callback for the result.
      */
+    @JvmStatic
     fun setOccupation(occupation: String, callback: DataPointCallback? = null) {
         setAttributesInternal(mapOf("occupation" to occupation), callback)
     }
@@ -326,6 +338,7 @@ object DataPoint {
      * @param gender   Gender string.
      * @param callback Optional callback for the result.
      */
+    @JvmStatic
     fun setGender(gender: String, callback: DataPointCallback? = null) {
         setAttributesInternal(mapOf("gender" to gender), callback)
     }
@@ -336,6 +349,7 @@ object DataPoint {
      * @param attributes Map of attribute names to values.
      * @param callback   Optional callback for the result.
      */
+    @JvmStatic
     fun setUserAttributes(attributes: Map<String, String>, callback: DataPointCallback? = null) {
         setAttributesInternal(attributes.toMap(), callback)
     }
@@ -536,6 +550,8 @@ object DataPoint {
             putExtra(SdkConstants.EXTRA_TASK_URL, baseTaskUrl)
             putExtra(SdkConstants.EXTRA_SESSION_TOKEN, prefs.sessionToken)
             putExtra(SdkConstants.EXTRA_USER_ID, prefs.userId)
+            putExtra(SdkConstants.EXTRA_EXTERNAL_USER_ID, prefs.externalUserId)
+            putExtra(SdkConstants.EXTRA_APP_ID, prefs.appId)
             if (context !is Activity) {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }

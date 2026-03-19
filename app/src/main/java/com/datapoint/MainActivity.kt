@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
         status = "Initializing…"
         DataPoint.initialize(
             context = applicationContext,
-            appId = "dp_sdk_2bb9b01fb2f9453a8c6ae32e1d8323e9",
+            apiKey = BuildConfig.DATAPOINT_SDK_API_KEY,
             userId = UUID.randomUUID().toString(),
             environment = Environment.PRODUCTION,
             callback = object : InitCallback {

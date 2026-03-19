@@ -97,7 +97,22 @@ internal class DataPointPreferences(context: Context) {
             prefs.edit { putString(SdkConstants.PREF_USER_ID, value) }
         }
 
+    /** External user ID from initialize response; exposed to WebView as getUUID(). */
+    var externalUserId: String?
+        get() = prefs.getString(SdkConstants.PREF_EXTERNAL_USER_ID, null)
+        set(value) {
+            prefs.edit { putString(SdkConstants.PREF_EXTERNAL_USER_ID, value) }
+        }
+
+    /** API key used to initialize the SDK (for session reuse check). */
     var apiKey: String?
+        get() = prefs.getString(SdkConstants.PREF_API_KEY, null)
+        set(value) {
+            prefs.edit { putString(SdkConstants.PREF_API_KEY, value) }
+        }
+
+    /** Backend app_id from initialize response; passed to the task WebView. */
+    var appId: String?
         get() = prefs.getString(SdkConstants.PREF_APP_ID, null)
         set(value) {
             prefs.edit { putString(SdkConstants.PREF_APP_ID, value) }

@@ -17,6 +17,8 @@ internal object DataPointApi {
 
     data class InitResponse(
         val userId: String,
+        val externalUserId: String,
+        val appId: String,
         val sessionToken: String,
         val expiresIn: Long
     )
@@ -147,6 +149,8 @@ internal object DataPointApi {
                 return ApiResult.Success(
                     InitResponse(
                         userId = data.optString("user_id", ""),
+                        externalUserId = data.optString("external_user_id", ""),
+                        appId = data.optString("app_id", ""),
                         sessionToken = data.optString("session_token", ""),
                         expiresIn = data.optLong("expires_in", 86400)
                     )
@@ -256,8 +260,6 @@ internal object DataPointApi {
         return when (httpCode) {
             400 -> com.datapoint.sdk.callbacks.ErrorCode.INVALID_REQUEST
             401 -> com.datapoint.sdk.callbacks.ErrorCode.INVALID_API_KEY
-            403 -> com.datapoint.sdk.callbacks.ErrorCode.APP_VALIDATION_FAILED
-            429 -> com.datapoint.sdk.callbacks.ErrorCode.RATE_LIMITED
             in 500..599 -> com.datapoint.sdk.callbacks.ErrorCode.SERVER_ERROR
             0 -> com.datapoint.sdk.callbacks.ErrorCode.NETWORK_ERROR
             else -> com.datapoint.sdk.callbacks.ErrorCode.INITIALIZATION_FAILED

@@ -19,9 +19,6 @@ object ErrorCode {
     /** [com.datapoint.sdk.DataPoint.showTasks] was called while the task screen is already visible. */
     const val TASK_ALREADY_SHOWING = 1005
 
-    /** A WebView-level error occurred while loading the task page. */
-    const val WEBVIEW_ERROR = 1006
-
     /** A generic network error (no connectivity, timeout, etc.). */
     const val NETWORK_ERROR = 1007
 
@@ -31,15 +28,6 @@ object ErrorCode {
     /** The API key is invalid or unauthorized (HTTP 401). */
     const val INVALID_API_KEY = 1009
 
-    /** App validation failed — e.g. package name or certificate mismatch (HTTP 403). */
-    const val APP_VALIDATION_FAILED = 1010
-
-    /** Too many requests — rate limited by the server (HTTP 429). */
-    const val RATE_LIMITED = 1011
-
     /** The server encountered an internal error (HTTP 5xx). */
     const val SERVER_ERROR = 1012
-
-    /** Catch-all for unexpected errors. */
-    const val UNKNOWN_ERROR = 1099
 }
