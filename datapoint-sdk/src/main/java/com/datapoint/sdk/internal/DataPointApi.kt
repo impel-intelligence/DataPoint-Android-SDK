@@ -240,6 +240,71 @@ internal object DataPointApi {
         }
     }
 
+    // ── Assign app user id ───────────────────────────────────────────────
+
+    /**
+     * POST /assign_app_user_id
+     *
+     * Associates an app-level user identifier with the current session.
+     * Body: `{ "app_user_id": "<value>" }`.
+     *
+     * **Must be called on a background thread.**
+     */
+    fun setAppUserId(
+        baseUrl: String,
+        sessionToken: String,
+        appUserId: String
+    ): ApiResult<Unit> {
+        var connection: HttpURLConnection? = null
+        return try {
+            val url = URL("$baseUrl${SdkConstants.ASSIGN_APP_USER_ID_ENDPOINT}")
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Authorization", "Bearer $sessionToken")
+                connectTimeout = 30_000
+                readTimeout = 30_000
+                doOutput = true
+            }
+
+            val body = JSONObject().apply {
+                put("app_user_id", appUserId)
+            }
+
+            DataPointLogger.d("POST $url  body=$body")
+
+            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(body.toString())
+                writer.flush()
+            }
+
+            val responseCode = connection.responseCode
+            val stream = if (responseCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream ?: connection.inputStream
+            }
+
+            val responseBody =
+                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+
+            DataPointLogger.d("Response ($responseCode): $responseBody")
+
+            if (responseCode !in 200..299) {
+                val msg = parseErrorMessage(responseBody, responseCode)
+                return ApiResult.Error(msg, responseCode)
+            }
+
+            ApiResult.Success(Unit)
+        } catch (e: Exception) {
+            DataPointLogger.e("assign_app_user_id request failed", e)
+            ApiResult.Error(e.message ?: "Network error", 0)
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private fun parseErrorMessage(body: String?, httpCode: Int): String {

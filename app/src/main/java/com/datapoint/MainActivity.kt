@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
         DataPoint.initialize(
             context = applicationContext,
             apiKey = BuildConfig.DATAPOINT_SDK_API_KEY,
-            userId = UUID.randomUUID().toString(),
+            userId = null,
             environment = Environment.PRODUCTION,
             callback = object : InitCallback {
                 override fun onSuccess() {

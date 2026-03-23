@@ -354,6 +354,77 @@ object DataPoint {
         setAttributesInternal(attributes.toMap(), callback)
     }
 
+    /**
+     * Assigns the host app's user identifier to the current DataPoint session.
+     *
+     * Calls `POST /assign_app_user_id` with JSON body `{ "app_user_id": ... }`.
+     *
+     * @param appUserId Non-blank identifier from the host app.
+     * @param callback  Optional callback for the result.
+     */
+    @JvmStatic
+    fun setAppUserId(appUserId: String, callback: DataPointCallback? = null) {
+        if (appUserId.isBlank()) {
+            DataPointLogger.e("setAppUserId() failed: appUserId is blank")
+            postOnMain {
+                callback?.onError(
+                    "appUserId cannot be empty",
+                    ErrorCode.INVALID_CONFIGURATION
+                )
+            }
+            return
+        }
+
+        if (state.get() != State.INITIALIZED) {
+            DataPointLogger.e("setAppUserId() – SDK not initialized")
+            postOnMain {
+                callback?.onError(
+                    "SDK not initialized. Call initialize() first.",
+                    ErrorCode.SDK_NOT_INITIALIZED
+                )
+            }
+            return
+        }
+
+        val prefs = preferences ?: run {
+            postOnMain {
+                callback?.onError("SDK not initialized", ErrorCode.SDK_NOT_INITIALIZED)
+            }
+            return
+        }
+
+        val token = prefs.sessionToken
+        if (token.isNullOrBlank()) {
+            postOnMain {
+                callback?.onError("No valid session token", ErrorCode.SESSION_EXPIRED)
+            }
+            return
+        }
+
+        executor.execute {
+            val result = DataPointApi.setAppUserId(
+                baseUrl = SdkConstants.PRODUCTION_BASE_URL,
+                sessionToken = token,
+                appUserId = appUserId
+            )
+
+            when (result) {
+                is DataPointApi.ApiResult.Success -> {
+                    DataPointLogger.d("assign_app_user_id succeeded")
+                    postOnMain { callback?.onSuccess() }
+                }
+
+                is DataPointApi.ApiResult.Error -> {
+                    val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
+                    DataPointLogger.e(
+                        "assign_app_user_id failed (HTTP ${result.httpCode}): ${result.message}"
+                    )
+                    postOnMain { callback?.onError(result.message, errorCode) }
+                }
+            }
+        }
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // INTERNAL (called by TaskWebActivity)
     // ════════════════════════════════════════════════════════════════════

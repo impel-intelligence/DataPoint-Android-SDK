@@ -12,8 +12,10 @@ internal object SdkConstants {
     const val PRODUCTION_BASE_URL = "https://qa-api.trydatapoint.com/data-labelling/v1"
     const val VALIDATE_ENDPOINT = "/initialize"
     const val USER_ATTRIBUTES_ENDPOINT = "/user/attributes"
+    const val ASSIGN_APP_USER_ID_ENDPOINT = "/assign_app_user_id"
 
     // ── Task WebView URLs ───────────────────────────────────────────────
+//    const val PRODUCTION_TASK_URL = "https://task.trydatapoint.com/"
     const val PRODUCTION_TASK_URL = "https://shayne-exorcistic-porsha.ngrok-free.dev/"
     const val SANDBOX_TASK_URL = PRODUCTION_TASK_URL
 

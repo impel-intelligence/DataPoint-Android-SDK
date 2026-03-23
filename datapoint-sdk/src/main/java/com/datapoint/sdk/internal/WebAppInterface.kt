@@ -11,7 +11,6 @@ import android.webkit.JavascriptInterface
 internal class WebAppInterface(
     @Volatile private var sessionToken: String?,
     private val userId: String?,
-    private val externalUserId: String?,
     private val sdkVersion: String,
     private val platform: String,
     private val environment: String,
@@ -28,7 +27,7 @@ internal class WebAppInterface(
 
     /** Returns external_user_id from the initialize response for the WebView. */
     @JavascriptInterface
-    fun getUUID(): String? = externalUserId ?: userId
+    fun getUUID(): String? = userId
 
     @JavascriptInterface
     fun getSdkVersion(): String = sdkVersion

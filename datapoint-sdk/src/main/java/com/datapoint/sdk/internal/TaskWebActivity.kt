@@ -229,13 +229,11 @@ class TaskWebActivity : Activity() {
 
         val sessionToken = intent.getStringExtra(SdkConstants.EXTRA_SESSION_TOKEN)
         val userId = intent.getStringExtra(SdkConstants.EXTRA_USER_ID)
-        val externalUserId = intent.getStringExtra(SdkConstants.EXTRA_EXTERNAL_USER_ID)
         val appId = intent.getStringExtra(SdkConstants.EXTRA_APP_ID) ?: packageName
 
         val appInterface = WebAppInterface(
             sessionToken = sessionToken,
             userId = userId,
-            externalUserId = externalUserId,
             sdkVersion = SdkConstants.SDK_VERSION,
             platform = SdkConstants.PLATFORM,
             environment = DataPoint.currentEnvironment.name,
