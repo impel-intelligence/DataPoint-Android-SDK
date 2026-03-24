@@ -1,4 +1,4 @@
-package com.datapoint.sdk.models
+package com.datapoint.sdk.callbacks.models
 
 /**
  * SDK environment configuration.

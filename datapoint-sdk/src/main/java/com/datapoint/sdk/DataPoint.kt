@@ -18,10 +18,11 @@ import com.datapoint.sdk.callbacks.InitCallback
 import com.datapoint.sdk.internal.DataPointApi
 import com.datapoint.sdk.internal.DataPointLogger
 import com.datapoint.sdk.internal.DataPointPreferences
+import com.datapoint.sdk.internal.LogSanitizer
 import com.datapoint.sdk.internal.DeviceInfoCollector
 import com.datapoint.sdk.internal.SdkConstants
 import com.datapoint.sdk.internal.TaskWebActivity
-import com.datapoint.sdk.models.Environment
+import com.datapoint.sdk.callbacks.models.Environment
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import java.lang.ref.WeakReference
 import java.security.MessageDigest
@@ -124,7 +125,10 @@ object DataPoint {
         environment: Environment = Environment.PRODUCTION,
         callback: InitCallback? = null
     ) {
-        DataPointLogger.d("initialize() apiKey=$apiKey env=$environment userId=$userId")
+        DataPointLogger.d(
+            "initialize() env=$environment apiKey=${LogSanitizer.secretLength(apiKey)} " +
+                "userId=${LogSanitizer.secretLength(userId)}"
+        )
 
         // ── Validate input ──────────────────────────────────────────────
         if (apiKey.isBlank()) {
@@ -173,9 +177,18 @@ object DataPoint {
                 limitAdTracking = adInfo.isLimitAdTrackingEnabled
                 advertisingId = if (limitAdTracking) null else adInfo.id
             } catch (e: Exception) {
-                DataPointLogger.w("Could not retrieve Advertising ID: ${e.message}")
+                DataPointLogger.w(
+                    "Could not retrieve Advertising ID: ${LogSanitizer.safeErrorSnippet(e.message, 80)}"
+                )
             }
-            DataPointLogger.d("Advertising ID: ${advertisingId ?: "unavailable"}")
+            DataPointLogger.d(
+                "Advertising ID: " +
+                    when {
+                        limitAdTracking -> "omitted (limit ad tracking)"
+                        advertisingId == null -> "unavailable"
+                        else -> "present(len=${advertisingId.length})"
+                    }
+            )
 
             // ── Collect device context ───────────────────────────────
             val sdkInfo = DeviceInfoCollector.collectSdkInfo()
@@ -227,7 +240,10 @@ object DataPoint {
                 is DataPointApi.ApiResult.Error -> {
                     state.set(State.FAILED)
                     val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
-                    DataPointLogger.e("Initialization failed (HTTP ${result.httpCode}): ${result.message}")
+                    DataPointLogger.e(
+                        "Initialization failed (HTTP ${result.httpCode}): " +
+                            LogSanitizer.safeErrorSnippet(result.message)
+                    )
                     postOnMain {
                         callback?.onError(result.message, errorCode)
                     }
@@ -417,7 +433,8 @@ object DataPoint {
                 is DataPointApi.ApiResult.Error -> {
                     val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
                     DataPointLogger.e(
-                        "assign_app_user_id failed (HTTP ${result.httpCode}): ${result.message}"
+                        "assign_app_user_id failed (HTTP ${result.httpCode}): " +
+                            LogSanitizer.safeErrorSnippet(result.message)
                     )
                     postOnMain { callback?.onError(result.message, errorCode) }
                 }
@@ -507,7 +524,9 @@ object DataPoint {
             }
 
             override fun onError(message: String, code: Int) {
-                DataPointLogger.e("Re-init after session expiry failed: $message")
+                DataPointLogger.e(
+                    "Re-init after session expiry failed: ${LogSanitizer.safeErrorSnippet(message)}"
+                )
                 listener?.onError(
                     "Session expired and re-initialization failed: $message",
                     ErrorCode.SESSION_EXPIRED
@@ -565,7 +584,8 @@ object DataPoint {
                 is DataPointApi.ApiResult.Error -> {
                     val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
                     DataPointLogger.e(
-                        "Set attributes failed (HTTP ${result.httpCode}): ${result.message}"
+                        "Set attributes failed (HTTP ${result.httpCode}): " +
+                            LogSanitizer.safeErrorSnippet(result.message)
                     )
                     postOnMain { callback?.onError(result.message, errorCode) }
                 }
@@ -634,7 +654,9 @@ object DataPoint {
         }
 
         context.startActivity(intent)
-        DataPointLogger.d("TaskWebActivity launched, url=$baseTaskUrl")
+        DataPointLogger.d(
+            "TaskWebActivity launched, url=${LogSanitizer.urlForLog(baseTaskUrl)}"
+        )
     }
 
     // ── Utility ─────────────────────────────────────────────────────────

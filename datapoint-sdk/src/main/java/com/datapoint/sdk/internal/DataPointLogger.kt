@@ -5,6 +5,9 @@ import android.util.Log
 /**
  * Internal SDK logger. Disabled by default; enable via
  * [com.datapoint.sdk.DataPoint.isLoggingEnabled].
+ *
+ * Never log secrets (API keys, session tokens, raw request/response bodies,
+ * advertising IDs, or end-user identifiers). Use [LogSanitizer] helpers when adding logs.
  */
 internal object DataPointLogger {
 

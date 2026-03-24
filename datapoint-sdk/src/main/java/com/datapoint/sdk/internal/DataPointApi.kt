@@ -93,7 +93,9 @@ internal object DataPointApi {
                     doOutput = true
                 }
 
-                DataPointLogger.d("POST $url  body=$body (attempt $attempt/$MAX_INIT_ATTEMPTS)")
+                DataPointLogger.d(
+                    "POST ${url.path} attempt $attempt/$MAX_INIT_ATTEMPTS (body omitted)"
+                )
 
                 OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
                     writer.write(body.toString())
@@ -110,7 +112,9 @@ internal object DataPointApi {
                 val responseBody =
                     BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
 
-                DataPointLogger.d("Response ($responseCode): $responseBody")
+                DataPointLogger.d(
+                    "initialize response http=$responseCode bytes=${responseBody.length} (body omitted)"
+                )
 
                 // 5xx → retry
                 if (responseCode in 500..599) {
@@ -207,7 +211,7 @@ internal object DataPointApi {
                 put("attributes", attrsObj)
             }
 
-            DataPointLogger.d("PUT $url  body=$body")
+            DataPointLogger.d("PUT ${url.path} (request body omitted)")
 
             OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
                 writer.write(body.toString())
@@ -224,7 +228,9 @@ internal object DataPointApi {
             val responseBody =
                 BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
 
-            DataPointLogger.d("Response ($responseCode): $responseBody")
+            DataPointLogger.d(
+                "setAttributes response http=$responseCode bytes=${responseBody.length} (body omitted)"
+            )
 
             if (responseCode !in 200..299) {
                 val msg = parseErrorMessage(responseBody, responseCode)
@@ -272,7 +278,7 @@ internal object DataPointApi {
                 put("app_user_id", appUserId)
             }
 
-            DataPointLogger.d("POST $url  body=$body")
+            DataPointLogger.d("POST ${url.path} (request body omitted)")
 
             OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
                 writer.write(body.toString())
@@ -289,7 +295,9 @@ internal object DataPointApi {
             val responseBody =
                 BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
 
-            DataPointLogger.d("Response ($responseCode): $responseBody")
+            DataPointLogger.d(
+                "assign_app_user_id response http=$responseCode bytes=${responseBody.length} (body omitted)"
+            )
 
             if (responseCode !in 200..299) {
                 val msg = parseErrorMessage(responseBody, responseCode)

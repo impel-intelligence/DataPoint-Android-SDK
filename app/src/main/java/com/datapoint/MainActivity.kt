@@ -29,10 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.datapoint.sdk.callbacks.DataPointCallback
 import com.datapoint.sdk.callbacks.DataPointListener
 import com.datapoint.sdk.DataPoint
-import com.datapoint.sdk.models.Environment
+import com.datapoint.sdk.callbacks.models.Environment
 import com.datapoint.sdk.callbacks.InitCallback
 import com.datapoint.ui.theme.DataPointTheme
-import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 

@@ -185,7 +185,9 @@ class TaskWebActivity : Activity() {
             ) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
-                    DataPointLogger.d("WebView error: ${error?.description}")
+                    DataPointLogger.d(
+                        "WebView error: ${LogSanitizer.safeErrorSnippet(error?.description?.toString())}"
+                    )
                     showErrorUI()
                 }
             }
@@ -340,7 +342,7 @@ class TaskWebActivity : Activity() {
 
     private fun loadUrl(url: String) {
         if (isInternetAvailable()) {
-            DataPointLogger.d("Loading URL: $url")
+            DataPointLogger.d("Loading URL: ${LogSanitizer.urlForLog(url)}")
             webView.loadUrl(url)
             hideErrorUI()
         } else {
@@ -352,7 +354,9 @@ class TaskWebActivity : Activity() {
     // ── JS bridge callbacks ─────────────────────────────────────────────
 
     private fun onTaskCompleted(payload: String?) {
-        DataPointLogger.d("Task completed, payload=$payload")
+        DataPointLogger.d(
+            "Task completed (payload omitted, len=${payload?.length ?: 0})"
+        )
         DataPoint.notifyTaskCompleted(payload)
     }
 

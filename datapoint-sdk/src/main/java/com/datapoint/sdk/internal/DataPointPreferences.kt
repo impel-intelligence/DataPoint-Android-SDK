@@ -29,7 +29,7 @@ internal class DataPointPreferences(context: Context) {
             if (existing != null) return existing
             val id = androidId ?: UUID.randomUUID().toString()
             prefs.edit { putString(SdkConstants.PREF_DEVICE_ID, id) }
-            DataPointLogger.d("Stored device ID: $id")
+            DataPointLogger.d("Device ID generated and stored (value omitted)")
             return id
         }
 
@@ -40,7 +40,9 @@ internal class DataPointPreferences(context: Context) {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
                 ?.takeIf { it.isNotBlank() }
         } catch (e: Exception) {
-            DataPointLogger.w("Could not read ANDROID_ID: ${e.message}")
+            DataPointLogger.w(
+                "Could not read ANDROID_ID: ${LogSanitizer.safeErrorSnippet(e.message, 80)}"
+            )
             null
         }
 
@@ -81,7 +83,7 @@ internal class DataPointPreferences(context: Context) {
             if (existing != null) return existing
             val id = UUID.randomUUID().toString()
             prefs.edit { putString(SdkConstants.PREF_INSTALL_ID, id) }
-            DataPointLogger.d("Generated install ID: $id")
+            DataPointLogger.d("Install ID generated and stored (value omitted)")
             return id
         }
 
