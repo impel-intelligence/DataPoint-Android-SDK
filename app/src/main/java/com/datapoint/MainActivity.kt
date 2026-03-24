@@ -57,6 +57,11 @@ class MainActivity : ComponentActivity() {
                 status = "Ad requested – show your ad here"
             }
 
+            override fun noTaskAvailable() {
+                log("noTaskAvailable → host can show native ads")
+                status = "No tasks available – show fallback/native ads"
+            }
+
             override fun onClosed() {
                 log("onClosed")
                 status = "Task screen closed"
@@ -90,7 +95,7 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             apiKey = BuildConfig.DATAPOINT_SDK_API_KEY,
             userId = null,
-            environment = Environment.PRODUCTION,
+            environment = Environment.SANDBOX   ,
             callback = object : InitCallback {
                 override fun onSuccess() {
                     log("SDK initialized successfully")

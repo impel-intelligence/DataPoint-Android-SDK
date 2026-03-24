@@ -459,6 +459,11 @@ object DataPoint {
         postOnMain { listener?.onAdRequested() }
     }
 
+    internal fun notifyNoTaskAvailable() {
+        isCallbackDispatched = true
+        postOnMain { listener?.noTaskAvailable() }
+    }
+
     internal fun notifyClosed() {
         isCallbackDispatched = true
         postOnMain { listener?.onClosed() }

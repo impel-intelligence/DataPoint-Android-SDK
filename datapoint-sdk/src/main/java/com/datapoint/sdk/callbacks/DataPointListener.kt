@@ -23,6 +23,13 @@ interface DataPointListener {
     fun onAdRequested()
 
     /**
+     * The WebView reported there are no tasks currently available.
+     * The task screen is closed before this callback is fired so the host
+     * app can immediately show fallback UI such as native ads.
+     */
+    fun noTaskAvailable()
+
+    /**
      * The task screen was closed — either by the user (back press),
      * by the WebView, or programmatically via [DataPoint.closeTasks].
      */

@@ -97,9 +97,11 @@ class TaskWebActivity : Activity() {
 
         // Remove JS interfaces before destroying WebView
         try {
-            webView.removeJavascriptInterface(SdkConstants.JS_BRIDGE_TASK)
-            webView.removeJavascriptInterface(SdkConstants.JS_BRIDGE_APP)
-            webView.removeJavascriptInterface(SdkConstants.JS_BRIDGE_AUDIO)
+            webView.apply {
+                removeJavascriptInterface(SdkConstants.JS_BRIDGE_TASK)
+                removeJavascriptInterface(SdkConstants.JS_BRIDGE_APP)
+                removeJavascriptInterface(SdkConstants.JS_BRIDGE_AUDIO)
+            }
         } catch (_: Exception) {}
 
         (webView.parent as? ViewGroup)?.removeView(webView)
@@ -221,6 +223,7 @@ class TaskWebActivity : Activity() {
             TaskJsBridge(
                 onTaskCompleted = ::onTaskCompleted,
                 onWatchAd = ::onWatchAd,
+                onNoTaskAvailable = ::onNoTaskAvailable,
                 onWindowClose = ::onWindowClose,
                 onSessionExpired = ::onSessionExpired
             ),
@@ -362,6 +365,12 @@ class TaskWebActivity : Activity() {
     private fun onWindowClose() {
         DataPointLogger.d("Window close from JS")
         DataPoint.notifyClosed()
+        finishIfNotAlready()
+    }
+
+    private fun onNoTaskAvailable() {
+        DataPointLogger.d("No task available from JS")
+        DataPoint.notifyNoTaskAvailable()
         finishIfNotAlready()
     }
 

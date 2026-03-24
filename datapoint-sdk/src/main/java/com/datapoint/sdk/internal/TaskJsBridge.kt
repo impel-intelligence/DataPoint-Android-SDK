@@ -14,6 +14,7 @@ import android.webkit.JavascriptInterface
 internal class TaskJsBridge(
     private val onTaskCompleted: (String?) -> Unit,
     private val onWatchAd: () -> Unit,
+    private val onNoTaskAvailable: () -> Unit,
     private val onWindowClose: () -> Unit,
     private val onSessionExpired: () -> Unit
 ) {
@@ -30,6 +31,12 @@ internal class TaskJsBridge(
     @JavascriptInterface
     fun watchAdInstead() {
         mainHandler.post { onWatchAd() }
+    }
+
+    /** Called by JS when there are currently no tasks available. */
+    @JavascriptInterface
+    fun noTaskAvailable() {
+        mainHandler.post { onNoTaskAvailable() }
     }
 
     /** Called by JS to close the task screen. */
