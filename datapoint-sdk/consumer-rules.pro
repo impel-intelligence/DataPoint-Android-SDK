@@ -2,11 +2,12 @@
 
 # Keep all public SDK API classes
 -keep class com.datapoint.sdk.DataPoint { *; }
--keep interface com.datapoint.sdk.DataPointListener { *; }
--keep interface com.datapoint.sdk.InitCallback { *; }
--keep class com.datapoint.sdk.Reward { *; }
--keep class com.datapoint.sdk.Environment { *; }
--keep class com.datapoint.sdk.ErrorCode { *; }
+-keep interface com.datapoint.sdk.callbacks.DataPointListener { *; }
+-keep interface com.datapoint.sdk.callbacks.InitCallback { *; }
+-keep interface com.datapoint.sdk.callbacks.DataPointCallback { *; }
+-keep class com.datapoint.sdk.callbacks.ErrorCode { *; }
+-keep class com.datapoint.sdk.callbacks.models.Reward { *; }
+-keep class com.datapoint.sdk.callbacks.models.Environment { *; }
 
 # Keep TaskWebActivity (referenced in AndroidManifest)
 -keep class com.datapoint.sdk.internal.TaskWebActivity { *; }

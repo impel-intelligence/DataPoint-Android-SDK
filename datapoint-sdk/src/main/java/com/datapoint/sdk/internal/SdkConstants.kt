@@ -5,7 +5,7 @@ package com.datapoint.sdk.internal
  */
 internal object SdkConstants {
 
-    const val SDK_VERSION = "1.0.0"
+    const val SDK_VERSION = "1.0.1"
     const val PLATFORM = "android"
 
     // ── API ─────────────────────────────────────────────────────────────
@@ -42,5 +42,5 @@ internal object SdkConstants {
     const val PREF_INSTALL_ID = "install_id"
 
     // ── Trusted hosts for WebView navigation ────────────────────────────
-    val TRUSTED_HOSTS = listOf("trydatapoint.com", "trydatapoint.ai", "ngrok-free.dev")
+    val TRUSTED_HOSTS = listOf("trydatapoint.com", "trydatapoint.ai")
 }
