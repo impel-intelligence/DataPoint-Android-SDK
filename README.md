@@ -15,7 +15,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://maven.trydatapoint.com/releases") }
     }
 }
 ```
@@ -24,7 +23,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.trydatapoint:sdk:1.0.0")
+    implementation("com.trydatapoint:sdk:1.0.1")
 }
 ```
 
