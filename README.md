@@ -170,11 +170,6 @@ DataPoint.setUserAttributes(
 | `Environment.PRODUCTION` | Connects to the live backend |
 | `Environment.SANDBOX` | Connects to the staging backend |
 
-| Environment              | Behavior                        |
-| ------------------------ | ------------------------------- |
-| `Environment.PRODUCTION` | Connects to the live backend    |
-| `Environment.SANDBOX`    | Connects to the staging backend |
-
 
 ---
 
