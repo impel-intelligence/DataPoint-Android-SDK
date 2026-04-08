@@ -23,6 +23,7 @@ import com.datapoint.sdk.internal.DeviceInfoCollector
 import com.datapoint.sdk.internal.SdkConstants
 import com.datapoint.sdk.internal.TaskWebActivity
 import com.datapoint.sdk.callbacks.models.Environment
+import androidx.core.content.edit
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import java.lang.ref.WeakReference
 import java.security.MessageDigest
@@ -57,7 +58,7 @@ object DataPoint {
 
     // ── State machine ───────────────────────────────────────────────────
 
-    private enum class State { UNINITIALIZED, INITIALIZING, INITIALIZED, FAILED }
+    private enum class State { UNINITIALIZED, INITIALIZING, INITIALIZED, FAILED,M }
 
     private val state = AtomicReference(State.UNINITIALIZED)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -100,6 +101,26 @@ object DataPoint {
             DataPointLogger.isEnabled = value
         }
 
+    /**
+     * Clears all SDK data from [SharedPreferences] and resets initialization state.
+     * Call when switching [Environment] (e.g. production vs QA) so the next
+     * [initialize] performs a full handshake instead of reusing a session from
+     * another environment.
+     */
+    @JvmStatic
+    fun clearPersistedState(context: Context) {
+        val appCtx = context.applicationContext
+        appCtx.getSharedPreferences(SdkConstants.PREFS_NAME, Context.MODE_PRIVATE).edit {
+            clear()
+        }
+        preferences = null
+        apiKey = null
+        userId = null
+        applicationContext = null
+        state.set(State.UNINITIALIZED)
+        DataPointLogger.d("Cleared SDK SharedPreferences and reset state")
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // PUBLIC API
     // ════════════════════════════════════════════════════════════════════
@@ -107,9 +128,8 @@ object DataPoint {
     /**
      * Initialize the SDK. Must be called **once** before [showTasks].
      *
-     * In [Environment.PRODUCTION] this performs a `POST /initialize` call to
-     * register the app and obtain a session token. In [Environment.SANDBOX]
-     * it skips the network call and uses mock data.
+     * Performs `POST /initialize` against the API for the chosen [environment]
+     * (production or QA). Registers the app and obtains a session token.
      *
      * @param context     Application or Activity context.
      * @param apiKey      API key provided by DataPoint.
@@ -206,7 +226,7 @@ object DataPoint {
             val privacyInfo = DeviceInfoCollector.collectPrivacy(limitAdTracking)
 
             val result = DataPointApi.validate(
-                baseUrl = SdkConstants.PRODUCTION_BASE_URL,
+                baseUrl = SdkConstants.apiBaseUrl(environment),
                 apiKey = apiKey,
                 userId = userId,
                 deviceId = deviceId,
@@ -292,8 +312,8 @@ object DataPoint {
             return
         }
 
-        // Auto-reinitialize if token expired
-        if (environment == Environment.PRODUCTION && !prefs.isSessionValid()) {
+        // Auto-reinitialize if token expired (production and QA)
+        if (!prefs.isSessionValid()) {
             DataPointLogger.d("Session expired – re-initializing before showing tasks")
             reinitializeAndShow(context)
             return
@@ -419,7 +439,7 @@ object DataPoint {
 
         executor.execute {
             val result = DataPointApi.setAppUserId(
-                baseUrl = SdkConstants.PRODUCTION_BASE_URL,
+                baseUrl = SdkConstants.apiBaseUrl(environment),
                 sessionToken = token,
                 appUserId = appUserId
             )
@@ -570,7 +590,7 @@ object DataPoint {
 
         executor.execute {
             val result = DataPointApi.setAttributes(
-                baseUrl = SdkConstants.PRODUCTION_BASE_URL,
+                baseUrl = SdkConstants.apiBaseUrl(environment),
                 sessionToken = token,
                 attributes = attributes
             )
@@ -637,10 +657,7 @@ object DataPoint {
 
     private fun launchTaskActivity(context: Context) {
         val prefs = preferences ?: return
-        val baseTaskUrl = when (environment) {
-            Environment.PRODUCTION -> SdkConstants.PRODUCTION_TASK_URL
-            Environment.SANDBOX -> SdkConstants.SANDBOX_TASK_URL
-        }
+        val baseTaskUrl = SdkConstants.taskUrl(environment)
 
         val intent = Intent(context, TaskWebActivity::class.java).apply {
             putExtra(SdkConstants.EXTRA_TASK_URL, baseTaskUrl)
