@@ -167,7 +167,7 @@ DataPoint.setUserAttributes(
 | Environment | Behavior |
 |---|---|
 | `Environment.PRODUCTION` | Connects to the live backend |
-| `Environment.SANDBOX` | Connects to the staging backend |
+| `Environment.SANDBOX` | Connects to the QA API and QA task WebView |
 
 
 ---

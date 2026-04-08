@@ -1,13 +1,13 @@
 [versions]
 agp = "8.7.1"
-kotlin = "1.9.24"
+kotlin = "2.1.20"
 coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.8.3"
 activityCompose = "1.9.3"
-composeBom = "2024.12.01"
+composeBom = "2025.03.01"
 appcompat = "1.6.1"
 material = "1.10.0"
 playServicesAdsIdentifier = "18.0.0"
@@ -35,3 +35,4 @@ play-services-ads-identifier = { group = "com.google.android.gms", name = "play-
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
