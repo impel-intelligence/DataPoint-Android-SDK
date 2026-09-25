@@ -1,22 +1,39 @@
 package com.datapoint.sdk.internal
 
+import com.datapoint.sdk.callbacks.models.Environment
+
 /**
  * Internal constants used across the SDK. Not exposed to consumers.
  */
 internal object SdkConstants {
 
-    const val SDK_VERSION = "1.0.1"
+    const val SDK_VERSION = "1.1.0"
     const val PLATFORM = "android"
 
     // ── API ─────────────────────────────────────────────────────────────
     const val PRODUCTION_BASE_URL = "https://api.trydatapoint.com/data-labelling/v1"
+    /** QA / staging API (used with [Environment.SANDBOX]). */
+    const val QA_BASE_URL = "https://qa-api.trydatapoint.com/data-labelling/v1"
     const val VALIDATE_ENDPOINT = "/initialize"
     const val USER_ATTRIBUTES_ENDPOINT = "/user/attributes"
     const val ASSIGN_APP_USER_ID_ENDPOINT = "/assign_app_user_id"
 
     // ── Task WebView URLs ───────────────────────────────────────────────
     const val PRODUCTION_TASK_URL = "https://task.trydatapoint.com/"
-    const val SANDBOX_TASK_URL = PRODUCTION_TASK_URL  // Same URL, environment handled server-side
+    /** QA task wall (used with [Environment.SANDBOX]). */
+    const val QA_TASK_URL = PRODUCTION_TASK_URL
+
+    fun apiBaseUrl(environment: Environment): String =
+        when (environment) {
+            Environment.PRODUCTION -> PRODUCTION_BASE_URL
+            Environment.SANDBOX -> QA_BASE_URL
+        }
+
+    fun taskUrl(environment: Environment): String =
+        when (environment) {
+            Environment.PRODUCTION -> PRODUCTION_TASK_URL
+            Environment.SANDBOX -> QA_TASK_URL
+        }
 
     // ── JavaScript bridge names ─────────────────────────────────────────
     const val JS_BRIDGE_TASK = "DataPointTask"

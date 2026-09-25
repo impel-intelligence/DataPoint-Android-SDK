@@ -4,16 +4,19 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.net.ConnectivityManager
+import android.net.Uri
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
 import android.os.Bundle
+import android.os.Message
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.ConsoleMessage
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -55,6 +58,9 @@ class TaskWebActivity : Activity() {
     private var audioVolumeHelper: WebViewAudioVolumeHelper? = null
     private var webAppInterface: WebAppInterface? = null
 
+    /** Single-use WebView that captures the destination of a `target="_blank"` link. */
+    private var relayWebView: WebView? = null
+
     // ── Lifecycle ───────────────────────────────────────────────────────
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -94,6 +100,8 @@ class TaskWebActivity : Activity() {
         // Stop audio observer
         audioVolumeHelper?.stopObserving()
         audioVolumeHelper = null
+
+        discardRelayWebView()
 
         // Remove JS interfaces before destroying WebView
         try {
@@ -177,6 +185,8 @@ class TaskWebActivity : Activity() {
             allowFileAccess = false
             allowContentAccess = false
             cacheMode = WebSettings.LOAD_DEFAULT
+            // target="_blank" links arrive as window requests instead of normal navigations.
+            setSupportMultipleWindows(true)
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -195,14 +205,86 @@ class TaskWebActivity : Activity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?, request: WebResourceRequest?
             ): Boolean {
-                val host = request?.url?.host ?: return true
-                if (isTrustedHost(host)) return false
-                DataPointLogger.d("Blocked navigation to untrusted host: $host")
-                return true
+                val uri = request?.url
+                // Subframes (custom creatives) may only load trusted hosts. Anything else is
+                // dropped silently — a frame must never be able to launch a browser.
+                if (request != null && !request.isForMainFrame) {
+                    return uri == null || !isTrustedUrl(uri)
+                }
+                return handleNavigation(uri)
             }
+
+            /**
+             * API 23 never calls the [WebResourceRequest] overload above — it only calls this
+             * deprecated one, and the base implementation would let every navigation through.
+             * Both must be overridden while minSdk is below 24.
+             */
+            @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean =
+                handleNavigation(url?.let { runCatching { Uri.parse(it) }.getOrNull() })
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: Message?
+            ): Boolean {
+                val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
+                // Only a tap may open a browser; scripted window.open on load is ignored.
+                if (!isUserGesture) {
+                    DataPointLogger.d("Ignored window request without user gesture")
+                    return false
+                }
+
+                // The destination of a target="_blank" link is only known once the new window
+                // starts navigating, so hand the page a throwaway WebView, read the URL from its
+                // first navigation, route it to a browser, and discard it.
+                // A previous window that never navigated would otherwise linger.
+                discardRelayWebView()
+
+                val relay = WebView(this@TaskWebActivity)
+                relayWebView = relay
+                relay.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        relayView: WebView?, request: WebResourceRequest?
+                    ): Boolean = handleBlankTarget(request?.url)
+
+                    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+                    override fun shouldOverrideUrlLoading(
+                        relayView: WebView?, url: String?
+                    ): Boolean =
+                        handleBlankTarget(url?.let { runCatching { Uri.parse(it) }.getOrNull() })
+
+                    /** Routes the destination, then drops the relay — it is single-use. */
+                    private fun handleBlankTarget(uri: Uri?): Boolean {
+                        uri?.let {
+                            // A _blank link back to our own task wall belongs in the main WebView.
+                            if (isTrustedUrl(it)) webView.loadUrl(it.toString())
+                            else routeOutsideWebView(it)
+                        }
+                        webView.post { discardRelayWebView() }
+                        return true
+                    }
+                }
+
+                transport.webView = relay
+                resultMsg.sendToTarget()
+                return true
+            }
+
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                val msg = consoleMessage ?: return false
+                val text = "[WebConsole] ${msg.sourceId()}:${msg.lineNumber()} – ${msg.message()}"
+                when (msg.messageLevel()) {
+                    ConsoleMessage.MessageLevel.ERROR -> DataPointLogger.e(text)
+                    ConsoleMessage.MessageLevel.WARNING -> DataPointLogger.w(text)
+                    else -> DataPointLogger.d(text)
+                }
+                return true
+            }
+
             override fun onJsAlert(
                 view: WebView?, url: String?, message: String?, result: JsResult?
             ): Boolean {
@@ -227,7 +309,8 @@ class TaskWebActivity : Activity() {
                 onWatchAd = ::onWatchAd,
                 onNoTaskAvailable = ::onNoTaskAvailable,
                 onWindowClose = ::onWindowClose,
-                onSessionExpired = ::onSessionExpired
+                onSessionExpired = ::onSessionExpired,
+                onOpenUrl = ::onOpenUrl
             ),
             SdkConstants.JS_BRIDGE_TASK
         )
@@ -264,8 +347,34 @@ class TaskWebActivity : Activity() {
 
     // ── Trusted host check ──────────────────────────────────────────────
 
-    private fun isTrustedHost(host: String): Boolean {
-        return SdkConstants.TRUSTED_HOSTS.any { host.endsWith(it) }
+    private fun isTrustedHost(host: String?): Boolean = UrlPolicy.isTrustedHost(host)
+
+    /**
+     * Decides where a navigation goes. Returns `true` when the WebView must not load it —
+     * either it was routed to a browser, or the URL was unusable and is dropped.
+     */
+    private fun handleNavigation(uri: Uri?): Boolean {
+        if (uri == null) return true
+        if (isTrustedUrl(uri)) return false
+        routeOutsideWebView(uri)
+        return true
+    }
+
+    /** A task-wall page that should keep rendering inside the WebView. */
+    private fun isTrustedUrl(uri: Uri): Boolean =
+        BrowserLauncher.isWebScheme(uri.scheme) && isTrustedHost(uri.host)
+
+    /**
+     * Sends a navigation the WebView must not handle to a browser: web links open in an in-app
+     * Custom Tab, other schemes (mailto:, tel:, market:, intent:, …) go to their handler app.
+     */
+    private fun routeOutsideWebView(uri: Uri) {
+        val mode = if (BrowserLauncher.isWebScheme(uri.scheme)) {
+            BrowserLauncher.OpenMode.IN_APP
+        } else {
+            BrowserLauncher.OpenMode.EXTERNAL
+        }
+        openInBrowser(uri.toString(), mode)
     }
 
     // ── Network monitoring ──────────────────────────────────────────────
@@ -378,6 +487,14 @@ class TaskWebActivity : Activity() {
         finishIfNotAlready()
     }
 
+    /**
+     * Bridge entry point for `DataPointTask.openExternalUrl(url[, mode])`. The task screen stays open
+     * so the user returns to it when the browser closes.
+     */
+    private fun onOpenUrl(url: String, mode: String?) {
+        openInBrowser(url, BrowserLauncher.OpenMode.from(mode))
+    }
+
     private fun onSessionExpired() {
         DataPointLogger.d("Session expired from JS – re-initializing in background")
         DataPoint.handleSessionExpired(this) { newToken ->
@@ -413,5 +530,23 @@ class TaskWebActivity : Activity() {
 
     private fun finishIfNotAlready() {
         if (!isFinishing) finish()
+    }
+
+    private fun discardRelayWebView() {
+        relayWebView?.let { relay ->
+            relayWebView = null
+            (relay.parent as? ViewGroup)?.removeView(relay)
+            relay.destroy()
+        }
+    }
+
+    private fun openInBrowser(
+        url: String,
+        mode: BrowserLauncher.OpenMode = BrowserLauncher.OpenMode.IN_APP
+    ) {
+        if (isFinishing || isDestroyed) return
+        if (!BrowserLauncher.open(this, url, mode)) {
+            DataPointLogger.w("Could not open ${LogSanitizer.urlForLog(url)}")
+        }
     }
 }

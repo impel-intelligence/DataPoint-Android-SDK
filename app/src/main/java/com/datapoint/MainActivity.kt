@@ -16,12 +16,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +43,7 @@ import com.datapoint.ui.theme.DataPointTheme
 class MainActivity : ComponentActivity() {
 
     private var status by mutableStateOf("Not initialized")
+    private var selectedEnvironment by mutableStateOf(Environment.PRODUCTION)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,10 +85,19 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DemoScreen(
                         status = status,
+                        selectedEnvironment = selectedEnvironment,
+                        onEnvironmentChange = { env ->
+                            if (env != selectedEnvironment) {
+                                DataPoint.clearPersistedState(applicationContext)
+                                status =
+                                    "Environment changed — SDK data cleared. Tap Initialize again."
+                            }
+                            selectedEnvironment = env
+                        },
                         onInitialize = ::initSdk,
                         onSetAttributes = ::setAttributes,
                         onShowTasks = ::showTasks,
-                        onCloseTasks = ::closeTasks,
+                        onClose = ::closeTasks,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -94,7 +111,7 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             apiKey = BuildConfig.DATAPOINT_SDK_API_KEY,
             userId = null,
-            environment = Environment.SANDBOX   ,
+            environment = selectedEnvironment,
             callback = object : InitCallback {
                 override fun onSuccess() {
                     log("SDK initialized successfully")
@@ -146,15 +163,28 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DemoScreen(
     status: String,
+    selectedEnvironment: Environment,
+    onEnvironmentChange: (Environment) -> Unit,
     onInitialize: () -> Unit,
     onSetAttributes: () -> Unit,
     onShowTasks: () -> Unit,
-    onCloseTasks: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val envOptions =
+        remember {
+            listOf(
+                Environment.PRODUCTION to "Production",
+                Environment.SANDBOX to "Sandbox"
+            )
+        }
+    var envMenuExpanded by remember { mutableStateOf(false) }
+    val envLabel = envOptions.first { it.first == selectedEnvironment }.second
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -168,7 +198,41 @@ private fun DemoScreen(
             style = MaterialTheme.typography.headlineMedium
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(24.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = envMenuExpanded,
+            onExpandedChange = { envMenuExpanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = envLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Environment") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = envMenuExpanded) },
+                modifier =
+                    Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                        .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = envMenuExpanded,
+                onDismissRequest = { envMenuExpanded = false }
+            ) {
+                envOptions.forEach { (env, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            onEnvironmentChange(env)
+                            envMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         Text(
             text = status,
@@ -206,7 +270,7 @@ private fun DemoScreen(
         Spacer(Modifier.height(12.dp))
 
         Button(
-            onClick = onCloseTasks,
+            onClick = onClose,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.error
