@@ -193,22 +193,12 @@ Task pages on DataPoint domains render inside the SDK's WebView. Anything else l
 | `javascript:` `file:` `content:` `data:`          | Blocked                                               |
 
 The task screen stays open underneath, so closing the browser returns the user to their task.
+Which target a task's CTA uses (in-app or external) is configured per job in DataPoint, not in
+your app.
 
 If no Custom Tabs-capable browser is installed, the SDK falls back to the system browser. Nothing
 needs to be added to your app's manifest — the SDK ships the Android 11+ `<queries>` entries that
 make browser resolution work.
-
-### From the task page
-
-The web page can also open a URL explicitly:
-
-```js
-// In-app Custom Tab (default)
-DataPointTask.openExternalUrl("https://example.com/offer");
-
-// System browser, as a separate task
-DataPointTask.openExternalUrl("https://example.com/offer", "external");
-```
 
 ---
 
