@@ -179,7 +179,7 @@ private fun DemoScreen(
         remember {
             listOf(
                 Environment.PRODUCTION to "Production",
-                Environment.SANDBOX to "Sandbox (QA API)"
+                Environment.SANDBOX to "Sandbox"
             )
         }
     var envMenuExpanded by remember { mutableStateOf(false) }

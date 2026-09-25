@@ -177,6 +177,38 @@ DataPoint.setUserAttributes(
 - **All callbacks are delivered on the main thread** — safe to update UI directly from any callback.
 - **Sessions are managed automatically** — the SDK refreshes expired tokens in the background. If a token expires while the task wall is open, the SDK silently re-initializes and resumes without closing the screen.
 - **Server errors are retried** — if the backend returns a 5xx during initialization, the SDK retries up to 3 times with increasing delay before reporting failure.
+- **Off-domain links open in a browser** — see below.
+
+---
+
+## Opening Links in a Browser
+
+Task pages on DataPoint domains render inside the SDK's WebView. Anything else leaves it:
+
+| The page does                                    | Where it opens                                       |
+| ------------------------------------------------ | ---------------------------------------------------- |
+| Link / redirect to a non-DataPoint `http(s)` host | In-app Chrome Custom Tab                              |
+| `target="_blank"` link                            | Custom Tab (or the WebView, if the host is DataPoint) |
+| `mailto:` `tel:` `market:` `intent:` …            | The app that handles that scheme                      |
+| `javascript:` `file:` `content:` `data:`          | Blocked                                               |
+
+The task screen stays open underneath, so closing the browser returns the user to their task.
+
+If no Custom Tabs-capable browser is installed, the SDK falls back to the system browser. Nothing
+needs to be added to your app's manifest — the SDK ships the Android 11+ `<queries>` entries that
+make browser resolution work.
+
+### From the task page
+
+The web page can also open a URL explicitly:
+
+```js
+// In-app Custom Tab (default)
+DataPointTask.openExternalUrl("https://example.com/offer");
+
+// System browser, as a separate task
+DataPointTask.openExternalUrl("https://example.com/offer", "external");
+```
 
 ---
 

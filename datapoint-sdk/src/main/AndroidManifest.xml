@@ -5,6 +5,23 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
 
+    <!--
+        Android 11+ package visibility: without these the SDK cannot see which browsers exist,
+        so Custom Tabs resolution fails and every link falls back to the system chooser.
+    -->
+    <queries>
+        <!-- Browsers that implement the Custom Tabs protocol (in-app browser). -->
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+        <!-- Any app that can open a web link (external browser fallback). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application>
         <activity
             android:name="com.datapoint.sdk.internal.TaskWebActivity"

@@ -16,7 +16,8 @@ internal class TaskJsBridge(
     private val onWatchAd: () -> Unit,
     private val onNoTaskAvailable: () -> Unit,
     private val onWindowClose: () -> Unit,
-    private val onSessionExpired: () -> Unit
+    private val onSessionExpired: () -> Unit,
+    private val onOpenUrl: (String, String?) -> Unit
 ) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -49,5 +50,23 @@ internal class TaskJsBridge(
     @JavascriptInterface
     fun sessionExpired() {
         mainHandler.post { onSessionExpired() }
+    }
+
+    /** Called by JS to open [url] in an in-app Chrome Custom Tab. The task screen stays open. */
+    @JavascriptInterface
+    fun openExternalUrl(url: String?) {
+        openExternalUrl(url, null)
+    }
+
+    /**
+     * Called by JS to open [url] outside the WebView. The task screen stays open.
+     *
+     * @param mode `"external"` for the system browser; anything else (or omitted) uses an
+     *   in-app Custom Tab, which falls back to the system browser when none is available.
+     */
+    @JavascriptInterface
+    fun openExternalUrl(url: String?, mode: String?) {
+        val target = url ?: return
+        mainHandler.post { onOpenUrl(target, mode) }
     }
 }
