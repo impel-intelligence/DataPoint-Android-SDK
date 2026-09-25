@@ -347,10 +347,7 @@ class TaskWebActivity : Activity() {
 
     // ── Trusted host check ──────────────────────────────────────────────
 
-    private fun isTrustedHost(host: String?): Boolean {
-        if (host.isNullOrBlank()) return false
-        return SdkConstants.TRUSTED_HOSTS.any { host == it || host.endsWith(".$it") }
-    }
+    private fun isTrustedHost(host: String?): Boolean = UrlPolicy.isTrustedHost(host)
 
     /**
      * Decides where a navigation goes. Returns `true` when the WebView must not load it —
