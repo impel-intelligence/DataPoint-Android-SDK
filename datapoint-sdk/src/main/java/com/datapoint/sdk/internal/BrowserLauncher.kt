@@ -57,13 +57,8 @@ internal object BrowserLauncher {
     private const val COLOR_SCHEME_SYSTEM = 0
     private const val SHARE_STATE_OFF = 2
 
-    private val WEB_SCHEMES = setOf("http", "https")
-
-    /** Schemes a remote page must never be able to hand to the SDK. */
-    private val BLOCKED_SCHEMES = setOf("javascript", "file", "content", "data", "about")
-
     /** `true` for schemes a Custom Tab can render; every other scheme belongs to another app. */
-    fun isWebScheme(scheme: String?): Boolean = scheme?.lowercase() in WEB_SCHEMES
+    fun isWebScheme(scheme: String?): Boolean = UrlPolicy.isWebScheme(scheme)
 
     /**
      * Opens [url] in [mode].
@@ -105,12 +100,12 @@ internal object BrowserLauncher {
         }
 
         val scheme = uri.scheme?.lowercase() ?: return null
-        if (scheme in BLOCKED_SCHEMES) {
+        if (UrlPolicy.isBlockedScheme(scheme)) {
             DataPointLogger.w("Blocked attempt to open $scheme URL")
             return null
         }
         // A web URL without a resolvable host (or an opaque one like "http:foo") is unusable.
-        if (scheme in WEB_SCHEMES && (uri.isOpaque || uri.host.isNullOrBlank())) return null
+        if (UrlPolicy.isWebScheme(scheme) && (uri.isOpaque || uri.host.isNullOrBlank())) return null
         return uri
     }
 
