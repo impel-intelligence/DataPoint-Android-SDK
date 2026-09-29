@@ -7,7 +7,7 @@ import com.datapoint.sdk.callbacks.models.Environment
  */
 internal object SdkConstants {
 
-    const val SDK_VERSION = "1.1.0"
+    const val SDK_VERSION = "1.2.0"
     const val PLATFORM = "android"
 
     // ── API ─────────────────────────────────────────────────────────────

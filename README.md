@@ -23,7 +23,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.trydatapoint:sdk:1.1.0")
+    implementation("com.trydatapoint:sdk:1.2.0")
 }
 ```
 

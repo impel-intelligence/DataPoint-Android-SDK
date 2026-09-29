@@ -2,7 +2,7 @@
 
 All notable changes to the DataPoint Android SDK.
 
-## Unreleased
+## 1.2.0 — 2026-09-29
 
 ### Added
 
@@ -17,6 +17,17 @@ All notable changes to the DataPoint Android SDK.
 - `showTasks()` pre-checks availability before opening the task screen. When nothing is
   available, `noTaskAvailable()` fires immediately and no screen is shown. A failed or slow
   (> 3 s) pre-check opens the screen as before.
+
+### Compatibility
+
+- No changes to existing public APIs. Works against backends that return only
+  `task_available`; `reason` is then derived from it and `message` is empty.
+
+### Upgrade
+
+```kotlin
+implementation("com.trydatapoint:sdk:1.2.0")
+```
 
 ## 1.1.0 — 2026-09-25
 
