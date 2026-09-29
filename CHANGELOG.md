@@ -2,6 +2,22 @@
 
 All notable changes to the DataPoint Android SDK.
 
+## Unreleased
+
+### Added
+
+- `DataPoint.checkTaskAvailability(callback)`: ask whether `showTasks` would have a task
+  right now, before rendering an entry point. Returns `TaskAvailability` with
+  `isAvailable`, a machine-readable `reason` (`available`, `no_task`,
+  `daily_limit_reached`, `access_disabled`) and a readable `message`. Read-only on the
+  server; errors are reported rather than guessed.
+
+### Changed
+
+- `showTasks()` pre-checks availability before opening the task screen. When nothing is
+  available, `noTaskAvailable()` fires immediately and no screen is shown. A failed or slow
+  (> 3 s) pre-check opens the screen as before.
+
 ## 1.1.0 — 2026-09-25
 
 ### Added

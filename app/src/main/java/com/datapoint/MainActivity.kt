@@ -38,6 +38,8 @@ import com.datapoint.sdk.callbacks.DataPointListener
 import com.datapoint.sdk.DataPoint
 import com.datapoint.sdk.callbacks.models.Environment
 import com.datapoint.sdk.callbacks.InitCallback
+import com.datapoint.sdk.callbacks.TaskAvailability
+import com.datapoint.sdk.callbacks.TaskAvailabilityCallback
 import com.datapoint.ui.theme.DataPointTheme
 
 class MainActivity : ComponentActivity() {
@@ -96,6 +98,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onInitialize = ::initSdk,
                         onSetAttributes = ::setAttributes,
+                        onCheckAvailability = ::checkAvailability,
                         onShowTasks = ::showTasks,
                         onClose = ::closeTasks,
                         modifier = Modifier.padding(innerPadding)
@@ -124,6 +127,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
         )
+    }
+
+    private fun checkAvailability() {
+        status = "Checking availability…"
+        DataPoint.checkTaskAvailability(object : TaskAvailabilityCallback {
+            override fun onResult(availability: TaskAvailability) {
+                log(
+                    "availability → available=${availability.isAvailable} " +
+                        "reason=${availability.reason} message=${availability.message}"
+                )
+                status = if (availability.isAvailable) {
+                    "Task available ✓ (${availability.reason})"
+                } else {
+                    "No task: ${availability.reason} – ${availability.message}"
+                }
+            }
+
+            override fun onError(message: String, code: Int) {
+                log("availability check failed: $message ($code)")
+                status = "Availability check failed ($code): $message"
+            }
+        })
     }
 
     private fun showTasks() {
@@ -171,6 +196,7 @@ private fun DemoScreen(
     onEnvironmentChange: (Environment) -> Unit,
     onInitialize: () -> Unit,
     onSetAttributes: () -> Unit,
+    onCheckAvailability: () -> Unit,
     onShowTasks: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
@@ -256,6 +282,15 @@ private fun DemoScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Set User Attributes")
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = onCheckAvailability,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Check Task Availability")
         }
 
         Spacer(Modifier.height(12.dp))

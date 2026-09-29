@@ -1,11 +1,13 @@
 package com.datapoint.sdk.internal
 
+import com.datapoint.sdk.callbacks.TaskAvailability
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 /**
  * Lightweight HTTP client for SDK–backend communication.
@@ -307,6 +309,70 @@ internal object DataPointApi {
             ApiResult.Success(Unit)
         } catch (e: Exception) {
             DataPointLogger.e("assign_app_user_id request failed", e)
+            ApiResult.Error(e.message ?: "Network error", 0)
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    // ── Availability ─────────────────────────────────────────────────────
+
+    /**
+     * GET /availability?device_id=…&environment=… with the app key in the `X-Api-Key` header.
+     * Read-only on the server: it never creates identity rows, so it is safe to call as often
+     * as the host likes. **Must be called on a background thread.**
+     */
+    fun checkAvailability(
+        baseUrl: String,
+        apiKey: String,
+        deviceId: String,
+        environment: String,
+        timeoutMs: Int = 15_000
+    ): ApiResult<TaskAvailability> {
+        var connection: HttpURLConnection? = null
+        return try {
+            val query = "device_id=${URLEncoder.encode(deviceId, "UTF-8")}" +
+                "&environment=${URLEncoder.encode(environment, "UTF-8")}"
+            val url = URL("$baseUrl${SdkConstants.AVAILABILITY_ENDPOINT}?$query")
+            connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("X-Api-Key", apiKey)
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
+            }
+
+            DataPointLogger.d("GET ${url.path}")
+
+            val responseCode = connection.responseCode
+            val stream = if (responseCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream ?: connection.inputStream
+            }
+            val responseBody =
+                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+
+            DataPointLogger.d("availability response http=$responseCode bytes=${responseBody.length}")
+
+            if (responseCode !in 200..299) {
+                return ApiResult.Error(parseErrorMessage(responseBody, responseCode), responseCode)
+            }
+
+            val json = JSONObject(responseBody)
+            val available = json.optBoolean("task_available", false)
+            ApiResult.Success(
+                TaskAvailability(
+                    isAvailable = available,
+                    reason = json.optString(
+                        "reason",
+                        if (available) TaskAvailability.REASON_AVAILABLE else TaskAvailability.REASON_NO_TASK
+                    ),
+                    message = json.optString("message", "")
+                )
+            )
+        } catch (e: Exception) {
+            DataPointLogger.e("availability request failed", e)
             ApiResult.Error(e.message ?: "Network error", 0)
         } finally {
             connection?.disconnect()
