@@ -23,7 +23,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.trydatapoint:sdk:1.1.0")
+    implementation("com.trydatapoint:sdk:1.2.0")
 }
 ```
 
@@ -103,6 +103,29 @@ DataPoint.setAppUserId("your_internal_user_id")
 ```
 
 ---
+
+### 6. Check availability before showing an entry point (Optional)
+
+```kotlin
+DataPoint.checkTaskAvailability(object : TaskAvailabilityCallback {
+    override fun onResult(availability: TaskAvailability) {
+        earnButton.isVisible = availability.isAvailable
+        // availability.reason: "available" | "no_task" | "daily_limit_reached" | "access_disabled"
+        // availability.message: readable form of reason, for your logs
+    }
+
+    override fun onError(message: String, code: Int) {
+        // Check could not be made (offline, server error). Decide your own fallback.
+    }
+})
+```
+
+The answer is exact for this user — the same rules the task wall applies — and the call is
+read-only on the server. Call it when a screen appears rather than on a timer.
+
+`showTasks()` runs the same check itself before opening the screen: when nothing is available
+you get `noTaskAvailable()` immediately and no screen is shown. If the check fails or times
+out (3 s), the screen opens as before.
 
 ## Quick Start (Java)
 

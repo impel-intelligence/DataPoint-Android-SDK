@@ -7,7 +7,7 @@ import com.datapoint.sdk.callbacks.models.Environment
  */
 internal object SdkConstants {
 
-    const val SDK_VERSION = "1.1.0"
+    const val SDK_VERSION = "1.2.0"
     const val PLATFORM = "android"
 
     // ── API ─────────────────────────────────────────────────────────────
@@ -17,6 +17,7 @@ internal object SdkConstants {
     const val VALIDATE_ENDPOINT = "/initialize"
     const val USER_ATTRIBUTES_ENDPOINT = "/user/attributes"
     const val ASSIGN_APP_USER_ID_ENDPOINT = "/assign_app_user_id"
+    const val AVAILABILITY_ENDPOINT = "/availability"
 
     // ── Task WebView URLs ───────────────────────────────────────────────
     const val PRODUCTION_TASK_URL = "https://task.trydatapoint.com/"

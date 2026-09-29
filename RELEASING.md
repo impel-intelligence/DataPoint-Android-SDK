@@ -75,6 +75,37 @@ Maven Central usually completes within an hour.
 
 ---
 
+## 1.2.0 checklist
+
+Changes since v1.1.0:
+
+- `DataPoint.checkTaskAvailability(callback)` returning `TaskAvailability`
+  (`isAvailable`, `reason`, `message`).
+- `showTasks()` pre-checks availability (3 s budget, fails open) and fires
+  `noTaskAvailable()` without opening a screen when nothing is available.
+- Sample app button for the availability check.
+
+Device pass specific to this release (sample app: Initialize → Check Task Availability → Show Tasks):
+
+- Inventory present: check says available, Show Tasks opens the wall.
+- No inventory: check says `no_task`; Show Tasks fires `noTaskAvailable()` and **no screen flashes**.
+- Airplane mode: check reports an error; Show Tasks still opens the screen with its offline message.
+- Daily limit reached (if reproducible): check says `daily_limit_reached`.
+
+Status:
+
+- [x] Version bumped to 1.2.0 in all three places
+- [x] Changelog entry
+- [x] SDK + sample app compile, unit tests pass
+- [ ] Device pass (above)
+- [ ] PR merged, tag `v1.2.0` pushed
+- [ ] `publishToMavenLocal` dry run, then `publishReleasePublicationToReleasesRepository`
+- [ ] Portal deployment published
+- [ ] Resolved from a fresh project
+- [ ] GitHub release published
+
+---
+
 ## 1.1.0 checklist
 
 Changes since v1.0.1:

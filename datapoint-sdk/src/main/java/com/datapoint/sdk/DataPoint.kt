@@ -12,6 +12,8 @@ import android.os.Looper
 import com.datapoint.sdk.DataPoint.initialize
 import com.datapoint.sdk.DataPoint.showTasks
 import com.datapoint.sdk.callbacks.DataPointCallback
+import com.datapoint.sdk.callbacks.TaskAvailability
+import com.datapoint.sdk.callbacks.TaskAvailabilityCallback
 import com.datapoint.sdk.callbacks.DataPointListener
 import com.datapoint.sdk.callbacks.ErrorCode
 import com.datapoint.sdk.callbacks.InitCallback
@@ -89,6 +91,9 @@ object DataPoint {
      */
     @Volatile
     private var isCallbackDispatched = false
+
+    /** Budget for the pre-check inside [showTasks]; on expiry the screen opens anyway. */
+    private const val PRECHECK_TIMEOUT_MS = 3_000
 
     // ── Public: logging ─────────────────────────────────────────────────
 
@@ -319,7 +324,59 @@ object DataPoint {
             return
         }
 
-        launchTaskActivity(context)
+        precheckThenLaunch(context)
+    }
+
+    /**
+     * Ask the server whether there is anything to show before opening the task screen, so a
+     * user with nothing to do gets [DataPointListener.noTaskAvailable] straight away instead
+     * of a screen that opens, loads and closes itself.
+     *
+     * The pre-check is an optimization, never a gate: on any error or timeout the screen opens
+     * and the page's own no-task path applies.
+     */
+    private fun precheckThenLaunch(context: Context) {
+        val prefs = preferences
+        val key = apiKey
+        if (prefs == null || key.isNullOrBlank()) {
+            launchTaskActivity(context)
+            return
+        }
+        val deviceId = prefs.deviceId
+        val env = environment
+        executor.execute {
+            val result = DataPointApi.checkAvailability(
+                baseUrl = SdkConstants.apiBaseUrl(env),
+                apiKey = key,
+                deviceId = deviceId,
+                environment = env.name,
+                timeoutMs = PRECHECK_TIMEOUT_MS
+            )
+            when (result) {
+                is DataPointApi.ApiResult.Success -> {
+                    if (result.data.isAvailable) {
+                        postOnMain { launchTaskActivity(context) }
+                    } else {
+                        DataPointLogger.d("showTasks() no task: reason=${result.data.reason}")
+                        deliverNoTask(result.data)
+                    }
+                }
+
+                is DataPointApi.ApiResult.Error -> {
+                    DataPointLogger.w(
+                        "showTasks() pre-check failed (HTTP ${result.httpCode}), opening anyway: " +
+                            LogSanitizer.safeErrorSnippet(result.message)
+                    )
+                    postOnMain { launchTaskActivity(context) }
+                }
+            }
+        }
+    }
+
+    /** No screen was opened, so this bypasses the activity-lifecycle bookkeeping on purpose. */
+    private fun deliverNoTask(availability: TaskAvailability) {
+        DataPointLogger.d("noTaskAvailable (pre-check): ${availability.message}")
+        postOnMain { listener?.noTaskAvailable() }
     }
 
     /**
@@ -457,6 +514,60 @@ object DataPoint {
                             LogSanitizer.safeErrorSnippet(result.message)
                     )
                     postOnMain { callback?.onError(result.message, errorCode) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Ask whether [showTasks] would have a task to show right now, before you render an
+     * entry point. The answer is exact for this user: it applies the same eligibility,
+     * daily-limit and publisher rules as the task wall itself.
+     *
+     * Call it when a screen appears, not on a timer. The result is delivered on the main
+     * thread; [TaskAvailabilityCallback.onError] means the check could not be made, and the
+     * SDK does not guess in that case.
+     */
+    @JvmStatic
+    fun checkTaskAvailability(callback: TaskAvailabilityCallback) {
+        if (state.get() != State.INITIALIZED) {
+            DataPointLogger.e("checkTaskAvailability() – SDK not initialized")
+            postOnMain {
+                callback.onError("SDK not initialized. Call initialize() first.", ErrorCode.SDK_NOT_INITIALIZED)
+            }
+            return
+        }
+        val prefs = preferences
+        val key = apiKey
+        if (prefs == null || key.isNullOrBlank()) {
+            postOnMain { callback.onError("SDK not initialized", ErrorCode.SDK_NOT_INITIALIZED) }
+            return
+        }
+
+        val deviceId = prefs.deviceId
+        val env = environment
+        executor.execute {
+            val result = DataPointApi.checkAvailability(
+                baseUrl = SdkConstants.apiBaseUrl(env),
+                apiKey = key,
+                deviceId = deviceId,
+                environment = env.name
+            )
+            when (result) {
+                is DataPointApi.ApiResult.Success -> {
+                    DataPointLogger.d(
+                        "availability available=${result.data.isAvailable} reason=${result.data.reason}"
+                    )
+                    postOnMain { callback.onResult(result.data) }
+                }
+
+                is DataPointApi.ApiResult.Error -> {
+                    val errorCode = DataPointApi.httpCodeToErrorCode(result.httpCode)
+                    DataPointLogger.e(
+                        "availability failed (HTTP ${result.httpCode}): " +
+                            LogSanitizer.safeErrorSnippet(result.message)
+                    )
+                    postOnMain { callback.onError(result.message, errorCode) }
                 }
             }
         }
@@ -643,7 +754,7 @@ object DataPoint {
 
         initialize(ctx, key, userId, environment, object : InitCallback {
             override fun onSuccess() {
-                launchTaskActivity(context)
+                precheckThenLaunch(context)
             }
 
             override fun onError(message: String, code: Int) {
